@@ -660,18 +660,32 @@ nova tentativa
 
 Uma estratégia de evolução possível é o **backoff**.
 
-Se (T_0) for o intervalo inicial, um backoff exponencial pode ser
-descrito por:
+Se $T_0$ for o intervalo inicial, um **backoff exponencial** pode ser descrito por:
 
 $$
-T_n=\min(T_{\max},T_0\,2^n)
+T_n = \min(T_{\mathrm{max}}, T_0 \cdot 2^n)
 $$
 
 onde:
 
--   \(n\) é o número de tentativas consecutivas malsucedidas;
--   (T_0) é o intervalo inicial;
--   (T\_{`\max`{=tex}}) é o intervalo máximo permitido.
+- $T_n$ é o intervalo de espera após a tentativa $n$;
+- $n$ é o número de tentativas consecutivas malsucedidas;
+- $T_0$ é o intervalo inicial;
+- $T_{\mathrm{max}}$ é o intervalo máximo permitido.
+
+Por exemplo, se:
+
+$$
+T_0 = 5\ \mathrm{s}
+$$
+
+os primeiros intervalos seriam aproximadamente:
+
+$$
+5,\ 10,\ 20,\ 40,\ 80,\ldots
+$$
+
+até atingir o limite definido por $T_{\mathrm{max}}$.
 
 Essa estratégia é uma possibilidade futura; sua adoção deve ser
 refletida no código antes de ser considerada funcionalidade consolidada.
