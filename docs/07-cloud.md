@@ -243,8 +243,7 @@ O envio ocorre depois do processamento local.
 
 A telemetria atual utiliza aproximadamente uma amostra por minuto.
 
-Se o intervalo entre envios for (`\Delta `{=tex}t) minutos, o número
-teórico de registros por dia é:
+Se o intervalo entre envios for $\Delta t$ minutos, o número teórico de registros por dia é:
 
 $$
 N_{\mathrm{dia}}=\frac{24\times60}{\Delta t}
@@ -670,10 +669,10 @@ Essa separação já constitui uma propriedade importante da arquitetura.
 Uma evolução planejada é armazenar temporariamente snapshots que não
 puderam ser enviados.
 
-Para uma fila com capacidade (Q\_{`\max`{=tex}}):
+Para uma fila com capacidade máxima $Q_{\mathrm{max}}$:
 
 $$
-0\le Q\le Q_{\max}
+0\le Q\le Q_{\mathrm{max}}
 $$
 
 Se (A) novos snapshots forem adicionados e (R) forem reenviados com
