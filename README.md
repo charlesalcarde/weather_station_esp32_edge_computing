@@ -1,70 +1,104 @@
 # Estação Ambiental ESP32
 
 Estação ambiental experimental baseada em ESP32 desenvolvida como
-plataforma de estudo e experimentação em **Computação de Borda (Edge
-Computing)**.
+plataforma de estudo, desenvolvimento e experimentação em **Computação
+de Borda (Edge Computing)**.
 
 O sistema realiza aquisição de dados ambientais, processamento local,
-classificação das condições ambientais, detecção de eventos,
-visualização por dashboard Web local e integração com serviços em nuvem.
+análise temporal, classificação das condições ambientais, detecção de
+eventos, visualização por dashboard Web local e integração com serviços
+externos e Cloud.
 
-> Estado atual do projeto: **v3.4-RC1**
+> **Estado atual do projeto:** v3.4-RC1
 
 ------------------------------------------------------------------------
 
 ## Índice
 
--   [Visão geral](#visão-geral)
--   [Arquitetura](#arquitetura)
--   [Hardware](#hardware)
-    -   [Microcontrolador](#microcontrolador)
-    -   [Sensores](#sensores)
--   [Processamento de borda](#processamento-de-borda)
--   [Dashboard local](#dashboard-local)
--   [Integração Cloud](#integração-cloud)
--   [Fonte meteorológica externa](#fonte-meteorológica-externa)
--   [Particionamento da Flash](#particionamento-da-flash)
--   [Estrutura do repositório](#estrutura-do-repositório)
--   [Tecnologias utilizadas](#tecnologias-utilizadas)
--   [Instalação](#instalação)
--   [Segurança](#segurança)
--   [Estado atual](#estado-atual)
--   [Roadmap](#roadmap)
--   [Contexto acadêmico](#contexto-acadêmico)
--   [Licença](#licença)
+-   [1. Visão geral](#1-visão-geral)
+-   [2. Objetivos do projeto](#2-objetivos-do-projeto)
+-   [3. Arquitetura](#3-arquitetura)
+-   [4. Hardware](#4-hardware)
+    -   [4.1 Microcontrolador](#41-microcontrolador)
+    -   [4.2 Sensores](#42-sensores)
+-   [5. Processamento de borda](#5-processamento-de-borda)
+-   [6. Dashboard local](#6-dashboard-local)
+-   [7. Conectividade](#7-conectividade)
+-   [8. Fonte meteorológica externa](#8-fonte-meteorológica-externa)
+-   [9. Integração Cloud](#9-integração-cloud)
+-   [10. Particionamento da Flash](#10-particionamento-da-flash)
+-   [11. Estrutura do repositório](#11-estrutura-do-repositório)
+-   [12. Documentação](#12-documentação)
+-   [13. Tecnologias utilizadas](#13-tecnologias-utilizadas)
+-   [14. Instalação](#14-instalação)
+-   [15. Operação](#15-operação)
+-   [16. Segurança](#16-segurança)
+-   [17. Estado atual](#17-estado-atual)
+-   [18. Roadmap](#18-roadmap)
+-   [19. Contexto acadêmico](#19-contexto-acadêmico)
+-   [20. Licença](#20-licença)
 
 ------------------------------------------------------------------------
 
-## Visão geral
+## 1. Visão geral
 
-A Estação Ambiental ESP32 foi concebida para explorar uma arquitetura em
-que o dispositivo de borda não atua apenas como coletor de dados.
+A **Estação Ambiental ESP32** foi concebida para explorar uma
+arquitetura em que o dispositivo de borda não atua apenas como coletor e
+transmissor de dados.
 
-O próprio ESP32 realiza parte significativa do processamento:
+O próprio ESP32 executa parte significativa do processamento:
 
 -   aquisição dos sensores;
--   cálculo de pressão atmosférica corrigida ao nível do mar;
+-   validação das leituras;
+-   cálculo da pressão atmosférica corrigida ao nível do mar;
 -   cálculo do ponto de orvalho;
 -   médias móveis;
+-   manutenção de histórico recente;
+-   mínimos e máximos diários;
 -   análise de tendência da pressão;
 -   avaliação de umidade e conforto ambiental;
+-   avaliação experimental de instabilidade;
 -   detecção de anomalias;
 -   classificação do estado ambiental;
--   geração de eventos;
--   manutenção de mínimos e máximos;
+-   geração de alertas e eventos;
 -   disponibilização de dashboard Web local;
 -   integração com fonte meteorológica externa;
--   envio de telemetria para a nuvem.
+-   envio de telemetria para a Cloud.
 
-Dessa forma, a estação continua possuindo capacidade local de aquisição,
-processamento, interpretação e visualização mesmo sem depender
-continuamente da infraestrutura Cloud.
+Dessa forma, a estação mantém capacidade local de **medir, processar,
+interpretar e apresentar informações** mesmo quando serviços externos
+estão indisponíveis.
+
+A diretriz arquitetural do projeto é:
+
+> **Edge primeiro; Cloud como extensão.**
 
 ------------------------------------------------------------------------
 
-## Arquitetura
+## 2. Objetivos do projeto
 
-A arquitetura atual combina processamento **Edge** e serviços **Cloud**.
+O projeto possui objetivos técnicos e acadêmicos.
+
+Do ponto de vista técnico, busca desenvolver uma estação capaz de:
+
+-   adquirir variáveis ambientais;
+-   processar séries temporais no próprio microcontrolador;
+-   produzir indicadores derivados;
+-   operar de forma autônoma na rede local;
+-   integrar dados locais e externos;
+-   armazenar histórico de longo prazo na Cloud;
+-   servir como base para futuras técnicas de TinyML.
+
+Do ponto de vista acadêmico, a estação funciona como uma plataforma
+experimental para estudar **Computação de Borda, IoT, sistemas
+distribuídos, resiliência Edge--Cloud, séries temporais e inferência
+local**.
+
+------------------------------------------------------------------------
+
+## 3. Arquitetura
+
+A arquitetura combina processamento **Edge** e serviços **Cloud**.
 
 ``` text
                  ┌─────────────┐
@@ -90,49 +124,53 @@ A arquitetura atual combina processamento **Edge** e serviços **Cloud**.
      LittleFS       Open-Meteo     Supabase
           │             │             │
           ▼             │             ▼
- Dashboard Web          │       Histórico Cloud
-      local             │
-          ▲             │
-          └─────────────┘
+ Dashboard Web          │       PostgreSQL
+      local             │             │
+          ▲             │             ▼
+          └─────────────┘      Histórico Cloud
 ```
 
-O ESP32 permanece responsável pela lógica principal da estação. A nuvem
-complementa a arquitetura com persistência e futura análise histórica de
-longo prazo.
+O ESP32 permanece responsável pela lógica ambiental imediata. A Cloud
+complementa a arquitetura com persistência, acesso remoto e análise
+histórica.
 
-Mais detalhes em [`docs/02-arquitetura.md`](docs/02-arquitetura.md).
+Documentação detalhada:
+[`docs/02-arquitetura.md`](docs/02-arquitetura.md).
 
 ------------------------------------------------------------------------
 
-## Hardware
+## 4. Hardware
 
-### Microcontrolador
+### 4.1 Microcontrolador
 
--   ESP32 Dev Module
--   ESP32-D0WD-V3
--   Dual Core
--   Wi-Fi
--   Bluetooth
--   Flash de 4 MB
+-   ESP32 Dev Module;
+-   ESP32-D0WD-V3;
+-   arquitetura dual core;
+-   Wi-Fi;
+-   Bluetooth;
+-   Flash física de 4 MB.
 
-### Sensores
+### 4.2 Sensores
 
--   **BMP180** --- temperatura e pressão atmosférica.
+-   **BMP180** --- temperatura e pressão atmosférica;
 -   **DHT11** --- umidade relativa e temperatura auxiliar.
 
-Na arquitetura atual, a temperatura principal utilizada pela estação é
-proveniente do **BMP180**.
+Na arquitetura Cloud atual, a temperatura canônica utilizada na
+telemetria é proveniente do **BMP180**.
+
+Documentação detalhada: [`docs/03-hardware.md`](docs/03-hardware.md).
 
 ------------------------------------------------------------------------
 
-## Processamento de borda
+## 5. Processamento de borda
 
 Entre as funções executadas localmente estão:
 
 -   média móvel de 15 minutos;
--   histórico móvel de 60 minutos;
+-   histórico móvel de aproximadamente 60 minutos;
 -   mínimos e máximos diários;
--   tendência da pressão atmosférica;
+-   correção da pressão para o nível do mar;
+-   tendência barométrica;
 -   ponto de orvalho;
 -   classificação da umidade;
 -   conforto ambiental;
@@ -142,12 +180,45 @@ Entre as funções executadas localmente estão:
 -   classificação do estado ambiental;
 -   registro de eventos.
 
-Essa abordagem reduz a dependência da Cloud e constitui o principal
-elemento de **Edge Computing** do projeto.
+Para uma média de $N$ amostras:
+
+$$
+\bar{x}=\frac{1}{N}\sum_{i=1}^{N}x_i
+$$
+
+Uma forma utilizada para estimar a pressão equivalente ao nível do mar
+é:
+
+$$
+P_0=P\left(1-\frac{0.0065h}{T+0.0065h+273.15}\right)^{-5.257}
+$$
+
+O ponto de orvalho pode ser obtido pela aproximação de Magnus:
+
+$$
+\gamma=\ln\left(\frac{RH}{100}\right)+\frac{aT}{b+T}
+$$
+
+$$
+T_d=\frac{b\gamma}{a-\gamma}
+$$
+
+A tendência da pressão pode ser estimada pelo coeficiente angular da
+regressão linear:
+
+$$
+m=\frac{N\sum_{i=1}^{N}t_iP_i-\left(\sum_{i=1}^{N}t_i\right)\left(\sum_{i=1}^{N}P_i\right)}{N\sum_{i=1}^{N}t_i^2-\left(\sum_{i=1}^{N}t_i\right)^2}
+$$
+
+Assim, a estação não transmite apenas dados brutos: ela produz
+**informação derivada e estados ambientais no próprio Edge**.
+
+Documentação detalhada:
+[`docs/11-processamento-edge.md`](docs/11-processamento-edge.md).
 
 ------------------------------------------------------------------------
 
-## Dashboard local
+## 6. Dashboard local
 
 O ESP32 disponibiliza uma interface Web acessível pela rede local.
 
@@ -155,69 +226,179 @@ O ESP32 disponibiliza uma interface Web acessível pela rede local.
 http://estacao-ambiental.local
 ```
 
-O dashboard apresenta temperatura, umidade relativa, pressão
-atmosférica, médias móveis, mínimos e máximos, ponto de orvalho,
-tendência da pressão, conforto ambiental, instabilidade, anomalias,
-alertas, eventos recentes, informações meteorológicas externas e estado
-de conectividade.
+O dashboard apresenta, entre outros recursos:
+
+-   temperatura;
+-   umidade relativa;
+-   pressão local e corrigida;
+-   médias móveis;
+-   mínimos e máximos;
+-   ponto de orvalho;
+-   tendência da pressão;
+-   conforto ambiental;
+-   instabilidade;
+-   anomalias;
+-   alertas;
+-   eventos recentes;
+-   informações meteorológicas externas;
+-   estado de conectividade;
+-   configurações da estação.
 
 Os arquivos da interface são armazenados no **LittleFS**, separando a
 aplicação Web do firmware principal.
 
-------------------------------------------------------------------------
-
-## Integração Cloud
-
-A estação envia telemetria para o **Supabase**.
-
-A integração permite armazenar dados ambientais para consulta remota,
-histórico de longo prazo, análise temporal, estudos de sazonalidade e
-desenvolvimento futuro de um dashboard Web remoto.
-
-A arquitetura foi projetada para que uma indisponibilidade temporária da
-Cloud não interrompa o processamento local da estação.
+Documentação detalhada:
+[`docs/05-dashboard-local.md`](docs/05-dashboard-local.md).
 
 ------------------------------------------------------------------------
 
-## Fonte meteorológica externa
+## 7. Conectividade
 
-Dados meteorológicos externos são obtidos por meio da API Open-Meteo.
+A estação possui recursos de conectividade voltados à autonomia
+operacional:
 
-Esses dados complementam as medições locais e permitem comparar a
-medição realizada pela estação com informações meteorológicas externas.
-A fonte externa não substitui os sensores locais.
+-   Wi-Fi;
+-   múltiplas redes conhecidas;
+-   seleção automática de rede;
+-   fallback para Access Point;
+-   portal de configuração;
+-   persistência em NVS;
+-   hostname configurável;
+-   mDNS;
+-   comunicação HTTP local;
+-   comunicação HTTPS com serviços externos.
 
-------------------------------------------------------------------------
-
-## Particionamento da Flash
-
-O projeto utiliza uma tabela de partições personalizada para a Flash de
-4 MB.
+O hostname padrão permite acesso por:
 
 ``` text
-Flash ESP32 — 4 MB
-
-├── NVS
-├── OTA Data
-├── APP0 ........ 1,625 MiB
-├── APP1 ........ 1,625 MiB
-└── LittleFS .... 704 KiB
+http://estacao-ambiental.local
 ```
 
-A mudança foi realizada devido ao crescimento do firmware, que havia
-atingido aproximadamente 95% da partição APP padrão.
+Documentação detalhada:
+[`docs/06-conectividade.md`](docs/06-conectividade.md).
 
-A nova configuração preserva suporte a **OTA** e amplia a margem
-disponível para evolução do firmware.
+------------------------------------------------------------------------
 
-O arquivo utilizado está em `firmware/estacao_ambiental/partitions.csv`.
+## 8. Fonte meteorológica externa
 
-Mais detalhes em
+Dados meteorológicos externos são obtidos por meio da **Open-Meteo**.
+
+Esses dados complementam as medições locais e permitem comparar a
+estação com uma referência meteorológica externa.
+
+Para uma grandeza $x$ presente nas duas fontes:
+
+$$
+\Delta x=x_{\mathrm{local}}-x_{\mathrm{externo}}
+$$
+
+Por exemplo, para temperatura:
+
+$$
+\Delta T=T_{\mathrm{local}}-T_{\mathrm{externa}}
+$$
+
+Diferenças não representam necessariamente erro, pois as fontes podem
+possuir localização, altitude, exposição e instante de medição
+distintos.
+
+A fonte externa **não substitui os sensores locais**.
+
+------------------------------------------------------------------------
+
+## 9. Integração Cloud
+
+A estação envia telemetria para o **Supabase**, utilizando API REST e
+persistência em PostgreSQL.
+
+``` text
+ESP32
+  │
+  ▼
+HTTPS / REST / JSON
+  │
+  ▼
+Supabase
+  │
+  ▼
+PostgreSQL
+```
+
+A integração permite:
+
+-   armazenamento de histórico;
+-   consulta remota;
+-   análise temporal;
+-   estudos de sazonalidade;
+-   futura construção de dashboard remoto;
+-   futura integração com outros serviços.
+
+Com aproximadamente um registro por minuto:
+
+$$
+N_{\mathrm{dia}}=24\times60=1440
+$$
+
+e, em 365 dias:
+
+$$
+N_{\mathrm{ano}}=1440\times365=525600
+$$
+
+registros por estação, em operação contínua.
+
+A indisponibilidade temporária da Cloud não deve interromper o
+processamento local.
+
+Documentação detalhada: [`docs/07-cloud.md`](docs/07-cloud.md).
+
+------------------------------------------------------------------------
+
+## 10. Particionamento da Flash
+
+O projeto utiliza uma tabela de partições personalizada para a Flash
+física de 4 MB.
+
+``` text
+Flash ESP32 — 4 MiB
+
+├── NVS .......... 20 KiB
+├── OTA Data ...... 8 KiB
+├── APP0 .......... 1.625 MiB
+├── APP1 .......... 1.625 MiB
+└── LittleFS ...... 704 KiB
+```
+
+Cada partição APP possui:
+
+$$
+0x1A0000=1703936\ \mathrm{bytes}
+$$
+
+O filesystem possui:
+
+$$
+0x0B0000=720896\ \mathrm{bytes}=704\ \mathrm{KiB}
+$$
+
+A mudança foi realizada porque o firmware havia atingido aproximadamente
+95% da partição APP do layout anterior.
+
+A nova configuração amplia a margem disponível e preserva a estrutura
+necessária para futura atualização **OTA**.
+
+O arquivo utilizado está em:
+
+``` text
+firmware/estacao_ambiental/partitions.csv
+```
+
+Documentação detalhada:
 [`docs/08-particionamento-flash.md`](docs/08-particionamento-flash.md).
 
 ------------------------------------------------------------------------
 
-## Estrutura do repositório
+## 11. Estrutura do repositório
 
 ``` text
 estacao-ambiental-esp32/
@@ -225,6 +406,7 @@ estacao-ambiental-esp32/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
+│
 ├── firmware/
 │   └── estacao_ambiental/
 │       ├── EstacaoAmbiental.ino
@@ -234,117 +416,267 @@ estacao-ambiental-esp32/
 │           ├── style.css
 │           ├── app.js
 │           └── favicon.png
+│
 ├── cloud/
 │   └── supabase/
+│
 ├── docs/
+│   ├── 01-visao-geral.md
+│   ├── 02-arquitetura.md
+│   ├── 03-hardware.md
+│   ├── 04-firmware.md
+│   ├── 05-dashboard-local.md
+│   ├── 06-conectividade.md
+│   ├── 07-cloud.md
+│   ├── 08-particionamento-flash.md
+│   ├── 09-instalacao.md
+│   ├── 10-operacao.md
+│   ├── 11-processamento-edge.md
+│   └── 12-roadmap.md
+│
 ├── assets/
 ├── research/
 └── releases/
 ```
 
-------------------------------------------------------------------------
-
-## Tecnologias utilizadas
-
--   ESP32
--   Arduino Framework
--   C/C++
--   HTML
--   CSS
--   JavaScript
--   LittleFS
--   Wi-Fi
--   mDNS
--   HTTP/HTTPS
--   REST
--   JSON
--   Supabase
--   PostgreSQL
--   Open-Meteo
+Essa organização separa firmware, frontend embarcado, infraestrutura
+Cloud, documentação, material de pesquisa e releases.
 
 ------------------------------------------------------------------------
 
-## Instalação
+## 12. Documentação
+
+A documentação técnica detalhada está organizada em `docs/`:
+
+  -------------------------------------------------------------------------------------------------------
+  Documento                                                           Conteúdo
+  ------------------------------------------------------------------- -----------------------------------
+  [`01-visao-geral.md`](docs/01-visao-geral.md)                       visão geral e objetivos
+
+  [`02-arquitetura.md`](docs/02-arquitetura.md)                       arquitetura do sistema
+
+  [`03-hardware.md`](docs/03-hardware.md)                             ESP32, sensores e conexões
+
+  [`04-firmware.md`](docs/04-firmware.md)                             organização e lógica do firmware
+
+  [`05-dashboard-local.md`](docs/05-dashboard-local.md)               interface Web embarcada
+
+  [`06-conectividade.md`](docs/06-conectividade.md)                   Wi-Fi, NVS, AP e mDNS
+
+  [`07-cloud.md`](docs/07-cloud.md)                                   Supabase, PostgreSQL e telemetria
+
+  [`08-particionamento-flash.md`](docs/08-particionamento-flash.md)   Flash, OTA e LittleFS
+
+  [`09-instalacao.md`](docs/09-instalacao.md)                         instalação e configuração
+
+  [`10-operacao.md`](docs/10-operacao.md)                             operação e diagnóstico
+
+  [`11-processamento-edge.md`](docs/11-processamento-edge.md)         processamento matemático e Edge
+                                                                      Computing
+
+  [`12-roadmap.md`](docs/12-roadmap.md)                               evolução planejada
+  -------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## 13. Tecnologias utilizadas
+
+-   ESP32;
+-   Arduino Framework;
+-   C/C++;
+-   HTML;
+-   CSS;
+-   JavaScript;
+-   LittleFS;
+-   NVS;
+-   Wi-Fi;
+-   mDNS;
+-   HTTP/HTTPS;
+-   REST;
+-   JSON;
+-   Supabase;
+-   PostgreSQL;
+-   Open-Meteo.
+
+------------------------------------------------------------------------
+
+## 14. Instalação
 
 O projeto utiliza o **Arduino IDE** com suporte à plataforma ESP32.
 
 O processo básico envolve:
 
 1.  selecionar `ESP32 Dev Module`;
-2.  configurar Flash de `4 MB`;
+2.  manter a Flash física configurada como `4 MB`;
 3.  selecionar `Partition Scheme → Custom`;
-4.  compilar e enviar `EstacaoAmbiental.ino`;
-5.  realizar o upload do LittleFS;
-6.  reiniciar o ESP32;
-7.  acessar o dashboard pela rede local.
+4.  manter `partitions.csv` junto ao projeto;
+5.  compilar e enviar `EstacaoAmbiental.ino`;
+6.  realizar separadamente o upload do LittleFS;
+7.  reiniciar o ESP32;
+8.  provisionar/configurar a rede Wi-Fi;
+9.  acessar o dashboard pela rede local;
+10. validar sensores e serviços externos.
 
-Instruções detalhadas serão mantidas em
-[`docs/09-instalacao.md`](docs/09-instalacao.md).
-
-------------------------------------------------------------------------
-
-## Segurança
-
-Credenciais privadas **não devem ser armazenadas no repositório**.
-
-Isso inclui SSID e senha Wi-Fi, tokens, chaves privadas, credenciais
-administrativas e segredos de APIs.
-
-Antes da publicação do firmware, as configurações sensíveis devem ser
-separadas do código-fonte versionado.
+Instruções detalhadas: [`docs/09-instalacao.md`](docs/09-instalacao.md).
 
 ------------------------------------------------------------------------
 
-## Estado atual
+## 15. Operação
 
-A versão **v3.4-RC1** possui:
+Depois de instalada, a estação foi projetada para operar de forma
+autônoma.
+
+Uma sequência básica de diagnóstico é:
+
+``` text
+hardware e sensores
+        │
+        ▼
+processamento Edge
+        │
+        ▼
+dashboard local
+        │
+        ▼
+serviços externos
+        │
+        ▼
+Cloud
+```
+
+Essa ordem permite distinguir problemas locais de falhas de
+conectividade ou serviços externos.
+
+Manual de operação: [`docs/10-operacao.md`](docs/10-operacao.md).
+
+------------------------------------------------------------------------
+
+## 16. Segurança
+
+Credenciais sensíveis **não devem ser armazenadas no repositório
+público**.
+
+Isso inclui:
+
+-   senhas Wi-Fi;
+-   chaves privadas;
+-   credenciais administrativas;
+-   `service_role`;
+-   senhas de banco;
+-   segredos de APIs.
+
+O ESP32 deve utilizar apenas as permissões necessárias à telemetria,
+seguindo o princípio do **menor privilégio**.
+
+O acesso Web local utiliza HTTP e pode aparecer no navegador como **Não
+seguro**. Isso é diferente da comunicação externa, que deve utilizar
+HTTPS quando suportado.
+
+A arquitetura futura do dashboard remoto deverá incluir autenticação e
+políticas adequadas de leitura.
+
+------------------------------------------------------------------------
+
+## 17. Estado atual
+
+A versão **v3.4-RC1** consolida:
 
 -   aquisição BMP180 e DHT11;
 -   processamento ambiental local;
+-   médias e histórico temporal;
+-   classificação e estados;
 -   dashboard Web local;
 -   LittleFS;
--   configuração Wi-Fi;
+-   múltiplas redes Wi-Fi;
+-   portal de configuração;
+-   NVS;
 -   mDNS;
--   API meteorológica externa;
+-   Open-Meteo;
 -   telemetria Supabase;
 -   eventos locais;
 -   particionamento personalizado;
--   suporte estrutural a OTA.
+-   estrutura APP0/APP1 preparada para OTA.
+
+Algumas funcionalidades descritas no roadmap ainda **não estão
+implementadas** e são explicitamente identificadas como futuras.
 
 ------------------------------------------------------------------------
 
-## Roadmap
+## 18. Roadmap
 
-Entre as evoluções previstas estão:
+Entre as principais evoluções previstas estão:
 
+-   consolidação definitiva da v3.4;
 -   dashboard Web remoto;
--   hospedagem Web independente da estação;
 -   histórico ambiental de longo prazo;
 -   análise de sazonalidade;
--   tolerância a falhas Edge → Cloud;
--   buffer local e reenvio de telemetria;
+-   envio de eventos para a Cloud;
+-   tolerância a falhas Edge--Cloud;
+-   fila local e reenvio de telemetria;
+-   prevenção de duplicidades;
 -   OTA;
--   integração com Alexa;
--   aprimoramento da configuração da estação;
+-   modularização progressiva do firmware;
+-   observabilidade do próprio nó Edge;
+-   múltiplas estações;
+-   integração com assistentes e LLMs;
 -   TinyML;
--   estudos de inferência diretamente na borda.
+-   detecção inteligente de anomalias;
+-   estudos de eficiência energética.
 
-Consulte [`docs/11-roadmap.md`](docs/11-roadmap.md).
-
-------------------------------------------------------------------------
-
-## Contexto acadêmico
-
-O projeto também funciona como plataforma experimental para estudo de
-**Computação de Borda**, permitindo investigar conceitos como
-processamento próximo à fonte dos dados, redução da dependência da
-Cloud, autonomia do nó Edge, latência, disponibilidade, tolerância a
-falhas, integração Edge--Cloud, processamento de séries temporais,
-TinyML e eficiência computacional em dispositivos embarcados.
+Roadmap completo: [`docs/12-roadmap.md`](docs/12-roadmap.md).
 
 ------------------------------------------------------------------------
 
-## Licença
+## 19. Contexto acadêmico
+
+O projeto funciona como plataforma experimental para estudo de
+**Computação de Borda**.
+
+Ele permite investigar conceitos como:
+
+-   processamento próximo à fonte dos dados;
+-   autonomia do nó Edge;
+-   redução de dependência da Cloud;
+-   latência;
+-   disponibilidade;
+-   tolerância a falhas;
+-   integração Edge--Cloud;
+-   processamento de séries temporais;
+-   extração de características;
+-   classificação local;
+-   TinyML;
+-   eficiência computacional;
+-   eficiência energética;
+-   sistemas distribuídos.
+
+A evolução conceitual do projeto pode ser resumida por:
+
+``` text
+Sensor
+  │
+  ▼
+Dado
+  │
+  ▼
+Processamento Edge
+  │
+  ▼
+Informação
+  │
+  ▼
+Decisão local
+  │
+  ▼
+Cloud / histórico / integração
+```
+
+Essa característica transforma a estação em mais do que um dispositivo
+IoT de telemetria: ela constitui uma **plataforma experimental de
+processamento distribuído na borda**.
+
+------------------------------------------------------------------------
+
+## 20. Licença
 
 A licença do projeto será definida antes da publicação da primeira
 versão estável.
