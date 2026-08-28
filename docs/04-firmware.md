@@ -324,158 +324,182 @@ $$
 \bar{x}_{60}=\frac{1}{N_{60}}\sum_{i=1}^{N_{60}}x_i
 $$
 
-onde (N\_{60}) corresponde ao número de amostras válidas existentes na
+onde $N_{60}$ corresponde ao número de amostras válidas existentes na
 janela, limitado aproximadamente a 60 observações.
 
 ### 8.3 Mínimos e máximos
 
-São mantidos valores extremos diários para grandezas ambientais
-relevantes.
+São mantidos valores extremos diários para grandezas ambientais relevantes.
 
-Além do valor, a estação pode registrar o horário em que o extremo
-ocorreu.
-
-Matematicamente, para o conjunto de amostras válidas (D) obtidas no dia:
+Para o conjunto de amostras válidas do dia \(D=\{x_1,x_2,\ldots,x_n\}\), o mínimo e o máximo são:
 
 $$
-x_{\min}=\min_{x_i\in D}(x_i)
+x_{\min}=\min(x_1,x_2,\ldots,x_n)
 $$
 
 $$
-x_{\max}=\max_{x_i\in D}(x_i)
+x_{\max}=\max(x_1,x_2,\ldots,x_n)
 $$
 
-Além dos valores, o firmware associa os instantes:
+Além do valor extremo, o firmware associa o instante em que ele ocorreu.
+
+Se a amostra \(x_j\) for o mínimo do dia:
 
 $$
-t_{\min}=\operatorname*{arg\,min}_{t_i}(x_i)
+x_j=x_{\min}
 $$
 
+então:
+
 $$
-t_{\max}=\operatorname*{arg\,max}_{t_i}(x_i)
+t_{\min}=t_j
 $$
 
-isto é, os horários em que os respectivos extremos ocorreram.
+Da mesma forma, se \(x_k\) for o máximo:
 
-O ciclo é reiniciado diariamente.
+$$
+x_k=x_{\max}
+$$
+
+então:
+
+$$
+t_{\max}=t_k
+$$
+
+onde \(t_j\) e \(t_k\) são os horários correspondentes às amostras mínima e máxima.
+
+Essa forma evita depender de macros LaTeX como `\operatorname`, que não são aceitas por todos os renderizadores Markdown.
+
+O ciclo de mínimos e máximos é reiniciado diariamente.
 
 ### 8.4 Pressão ao nível do mar
 
-A pressão medida pelo BMP180 corresponde à pressão na altitude da
-estação.
+A pressão medida pelo BMP180 corresponde à pressão atmosférica na altitude física da estação.
 
-O firmware calcula também uma pressão corrigida ao nível do mar,
-utilizando a altitude configurada.
+Para permitir comparação meteorológica com localidades situadas em altitudes diferentes, o firmware calcula uma estimativa da pressão equivalente ao nível do mar.
 
-Isso permite uma comparação meteorológica mais apropriada entre
-localidades com diferentes altitudes.
+Uma forma barométrica usual da correção é:
+
+$$
+P_0=P\left(1-\frac{0.0065h}{T+0.0065h+273.15}\right)^{-5.257}
+$$
+
+onde:
+
+- \(P_0\) = pressão estimada ao nível do mar;
+- \(P\) = pressão medida pelo sensor;
+- \(h\) = altitude da estação, em metros;
+- \(T\) = temperatura do ar, em graus Celsius.
+
+O termo \(273.15\) realiza a conversão da referência de temperatura para a escala absoluta empregada na relação barométrica.
+
+Dependendo da biblioteca utilizada pelo firmware, a expressão pode aparecer em forma algébrica equivalente.
 
 ### 8.5 Ponto de orvalho
 
-O ponto de orvalho é calculado a partir de temperatura e umidade
-relativa.
+O ponto de orvalho é calculado a partir da temperatura do ar e da umidade relativa.
 
-Ele fornece uma indicação adicional sobre a quantidade de vapor de água
-presente no ar.
+Uma aproximação amplamente utilizada é a fórmula de Magnus.
+
+Primeiro calcula-se a variável auxiliar:
+
+$$
+\gamma=\ln\left(\frac{RH}{100}\right)+\frac{aT}{b+T}
+$$
+
+Em seguida, o ponto de orvalho é obtido por:
+
+$$
+T_d=\frac{b\gamma}{a-\gamma}
+$$
+
+onde:
+
+- \(T_d\) = ponto de orvalho, em °C;
+- \(T\) = temperatura do ar, em °C;
+- \(RH\) = umidade relativa, em %;
+- \(a\) e \(b\) = constantes da aproximação.
+
+Uma parametrização comum utiliza:
+
+$$
+a=17.62
+$$
+
+$$
+b=243.12
+$$
+
+com \(b\) expresso em °C.
+
+O ponto de orvalho acrescenta uma informação termodinâmica que não é obtida diretamente pelos sensores, sendo portanto um exemplo claro de **informação derivada no Edge**.
 
 ### 8.6 Tendência da pressão
 
-O firmware analisa a evolução temporal da pressão atmosférica.
+O firmware analisa a evolução temporal da pressão atmosférica usando o histórico recente.
 
-Em vez de utilizar apenas duas amostras isoladas, o sistema pode estimar
-a tendência a partir do histórico recente.
-
-Para estimar a tendência de forma mais robusta, pode-se ajustar uma reta
-aos pares ((t_i,P_i)) pelo método dos mínimos quadrados:
+Uma maneira mais robusta de avaliar a tendência consiste em ajustar uma reta aos pares de amostras \((t_i,P_i)\) pelo método dos mínimos quadrados:
 
 $$
 P(t)=mt+b
 $$
 
-O coeficiente angular é:
+O coeficiente angular \(m\), que representa a taxa de variação da pressão, é calculado por:
 
 $$
-m=
-\frac{
-N\sum_{i=1}^{N}t_iP_i
--
-\left(\sum_{i=1}^{N}t_i\right)
-\left(\sum_{i=1}^{N}P_i\right)
-}{
-N\sum_{i=1}^{N}t_i^2
--
-\left(\sum_{i=1}^{N}t_i\right)^2
-}
+m=\frac{N\sum_{i=1}^{N}t_iP_i-\left(\sum_{i=1}^{N}t_i\right)\left(\sum_{i=1}^{N}P_i\right)}{N\sum_{i=1}^{N}t_i^2-\left(\sum_{i=1}^{N}t_i\right)^2}
 $$
 
-e o intercepto:
+O intercepto \(b\) é:
 
 $$
-b=
-\frac{
-\sum_{i=1}^{N}P_i
--
-m\sum_{i=1}^{N}t_i
-}{N}
+b=\frac{\sum_{i=1}^{N}P_i-m\sum_{i=1}^{N}t_i}{N}
 $$
 
 onde:
 
--   (P_i) é a pressão da amostra (i);
--   (t_i) é o instante associado à amostra;
--   \(N\) é o número de amostras;
--   \(m\) representa a taxa de variação da pressão.
+- \(P_i\) = pressão da amostra \(i\);
+- \(t_i\) = instante da amostra \(i\);
+- \(N\) = número de amostras utilizadas;
+- \(m\) = coeficiente angular da reta;
+- \(b\) = intercepto.
 
-Quando o tempo é expresso em horas, (m) pode ser interpretado
-diretamente em:
-
-$$
-\mathrm{hPa/h}
-$$
-
-De maneira geral:
+Quando \(t_i\) é expresso em horas e \(P_i\) em hPa, a unidade do coeficiente \(m\) é:
 
 $$
-m>0 \Rightarrow \text{pressão crescente}
+\frac{\mathrm{hPa}}{\mathrm{h}}
 $$
 
-$$
-m\approx0 \Rightarrow \text{pressão estável}
-$$
+A interpretação geral é:
+
+- se \(m>0\), a pressão apresenta tendência de subida;
+- se \(m\) estiver próximo de zero, a pressão é considerada estável;
+- se \(m<0\), a pressão apresenta tendência de queda.
+
+Os limiares numéricos empregados para classificar uma tendência como subida, estabilidade ou queda devem corresponder aos valores efetivamente definidos no firmware.
+
+Também pode ser calculada uma variação simples entre dois instantes:
 
 $$
-m<0 \Rightarrow \text{pressão decrescente}
+\Delta P=P_{\mathrm{atual}}-P_{\mathrm{anterior}}
 $$
 
-Os limiares usados para transformar o valor numérico de (m) em uma
-classe ambiental devem ser os definidos no firmware.
-
-O resultado é expresso de forma interpretável, como:
-
-``` text
-pressão subindo
-pressão estável
-pressão caindo
-```
-
-e pode também ser representado numericamente em hPa/h.
-
-Uma variação simples entre dois instantes também pode ser expressa por:
-
-$$
-\Delta P=P_{\text{atual}}-P_{\text{anterior}}
-$$
-
-ou, para uma janela temporal:
+ou, para uma janela \(\Delta t\):
 
 $$
 \Delta P_{\Delta t}=P(t)-P(t-\Delta t)
 $$
 
-A regressão linear, entretanto, utiliza o conjunto de observações da
-janela e tende a ser menos sensível a uma única leitura isolada.
+A diferença é conceitual: \(\Delta P\) compara pontos específicos, enquanto a regressão utiliza várias amostras e reduz a influência de uma única leitura isolada.
 
-------------------------------------------------------------------------
+O resultado é apresentado ao usuário de forma interpretável, por exemplo:
+
+```text
+pressão subindo
+pressão estável
+pressão caindo
+```
 
 ## 9. Estados ambientais
 
