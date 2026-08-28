@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Estação Ambiental ESP32</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <div class="header">
+    <div class="brand-area">
+      <img src="/favicon.png" alt="" class="brand-logo">
+      <div>
+        <h1>Estação Ambiental ESP32</h1>
+        <div class="subtitle">Computação de Borda • BMP180 + DHT11</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btnTema" class="theme-toggle" type="button" aria-label="Alternar modo claro e escuro" title="Alternar tema">☾</button>
+
+      <div class="clockBox">
+        <div id="dataEstacao" class="date">--/--/----</div>
+        <div id="relogioEstacao" class="clock">--:--:--</div>
+        <div class="online">● Sistema online</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div id="wifiSetupBanner" class="setup-banner hidden">
+    <div>
+      <strong>Modo de configuração Wi-Fi ativo</strong>
+      <div id="wifiSetupBannerText">
+        Conecte a estação a uma rede para habilitar Internet e a referência meteorológica externa.
+      </div>
+    </div>
+    <button id="btnBannerWiFi">Configurar Wi-Fi</button>
+  </div>
+
+  <div class="toolbar">
+
+    <div class="group">
+      <span class="group-label">Temperatura</span>
+      <button id="btnC" class="active">°C</button>
+      <button id="btnF">°F</button>
+    </div>
+
+    <div class="group">
+      <span class="group-label">Pressão</span>
+      <button id="btnHPA" class="active">hPa</button>
+      <button id="btnATM">atm</button>
+    </div>
+
+    <div class="group">
+      <button id="btnConfiguracoes">⚙ Configurações</button>
+      <button id="btnZerar">Zerar Min/Max</button>
+      <button id="btnLimpar" class="danger">Limpar histórico</button>
+    </div>
+
+  </div>
+
+  <section class="panel">
+
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Estado Ambiental</div>
+        <div class="panel-subtitle">Interpretação realizada localmente pelo ESP32</div>
+      </div>
+
+      <div id="estadoGeral" class="general-state neutral">ANALISANDO</div>
+    </div>
+
+    <div class="environment-grid">
+
+      <div class="environment-item">
+        <div class="env-label">
+          Umidade
+          <button class="info-btn" data-info="umidade" data-short="Classificação local da umidade.">i</button>
+        </div>
+        <div id="estadoUmidade" class="env-value">--</div>
+      </div>
+
+      <div class="environment-item">
+        <div class="env-label">
+          Conforto ambiental
+          <button class="info-btn" data-info="conforto" data-short="Combina temperatura e umidade.">i</button>
+        </div>
+        <div id="estadoConforto" class="env-value">--</div>
+      </div>
+
+      <div class="environment-item">
+        <div class="env-label">
+          Ponto de orvalho
+          <button class="info-btn" data-info="orvalho" data-short="Calculado localmente pelo ESP32.">i</button>
+        </div>
+        <div id="pontoOrvalho" class="env-value">--</div>
+      </div>
+
+      <div class="environment-item">
+        <div class="env-label">
+          Tendência da pressão
+          <button class="info-btn" data-info="pressao" data-short="Regressão linear do histórico.">i</button>
+        </div>
+        <div id="estadoPressao" class="env-value">--</div>
+        <div id="tendenciaValor" class="muted status-sub">--</div>
+      </div>
+
+      <div class="environment-item">
+        <div class="env-label">
+          Instabilidade
+          <button class="info-btn" data-info="instabilidade" data-short="Indicador ambiental experimental.">i</button>
+        </div>
+        <div id="instabilidade" class="env-value">--</div>
+      </div>
+
+      <div class="environment-item">
+        <div class="env-label">
+          Anomalias
+          <button class="info-btn" data-info="anomalia" data-short="Detecta comportamento incomum.">i</button>
+        </div>
+        <div id="anomalia" class="env-value">--</div>
+      </div>
+
+    </div>
+
+    <div class="alert-box">
+      <div class="muted alert-label">
+        Alertas locais
+        <button class="info-btn" data-info="alertas" data-short="Alertas previstos pelo processamento local.">i</button>
+      </div>
+      <div id="alertas" class="alert-list"></div>
+    </div>
+
+  </section>
+
+  <section class="panel">
+
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">
+          Referência Meteorológica Externa
+          <button class="info-btn" data-info="externo" data-short="Referência meteorológica obtida pela Internet.">i</button>
+        </div>
+        <div class="panel-subtitle">Fonte independente das medições do ESP32</div>
+      </div>
+
+    </div>
+
+    <div class="external-hero">
+      <div id="weatherIcon" class="weather-icon">🌐</div>
+
+      <div>
+        <div id="externalLocation" class="external-location">--</div>
+        <div id="externalCondition" class="external-condition">Aguardando dados...</div>
+        <div id="apiStatus" class="api-status">--</div>
+      </div>
+    </div>
+
+    <div class="external-groups">
+
+      <div class="external-group">
+        <div class="external-group-title">CONDIÇÕES ATUAIS</div>
+        <div class="ext-row"><span>🌡 Temperatura</span><strong id="extTemp">--</strong></div>
+        <div class="ext-row"><span>🌡 Sensação térmica</span><strong id="extSensacao">--</strong></div>
+        <div class="ext-row"><span>💧 Umidade</span><strong id="extUmidade">--</strong></div>
+        <div class="ext-row"><span>💦 Ponto de orvalho</span><strong id="extOrvalho">--</strong></div>
+      </div>
+
+      <div class="external-group">
+        <div class="external-group-title">PRESSÃO / ATMOSFERA</div>
+        <div class="ext-row"><span>Nível do mar</span><strong id="extPressaoMar">--</strong></div>
+        <div class="ext-row"><span>Superfície</span><strong id="extPressaoSup">--</strong></div>
+        <div class="ext-row"><span>☁ Nuvens</span><strong id="extNuvens">--</strong></div>
+        <div class="ext-row"><span>👁 Visibilidade</span><strong id="extVisibilidade">--</strong></div>
+      </div>
+
+      <div class="external-group">
+        <div class="external-group-title">VENTO / SOL</div>
+        <div class="ext-row"><span>💨 Velocidade</span><strong id="extVento">--</strong></div>
+        <div class="ext-row"><span>🧭 Direção</span><strong id="extDirecao">--</strong></div>
+        <div class="ext-row"><span>💨 Rajadas</span><strong id="extRajada">--</strong></div>
+        <div class="ext-row"><span>☀ Índice UV</span><strong id="extUV">--</strong></div>
+      </div>
+
+      <div class="external-group">
+        <div class="external-group-title">PRECIPITAÇÃO</div>
+        <div class="ext-row"><span>🌧 Precipitação</span><strong id="extPrecip">--</strong></div>
+        <div class="ext-row"><span>🌧 Chuva</span><strong id="extChuva">--</strong></div>
+        <div class="ext-row"><span>☔ Probabilidade</span><strong id="extProb">--</strong></div>
+      </div>
+
+    </div>
+
+    <div class="compare">
+
+      <div class="compare-title">Local × referência externa</div>
+
+      <div class="compare-row compare-header">
+        <div>Grandeza</div>
+        <div>Local</div>
+        <div>Externo</div>
+        <div>Diferença</div>
+      </div>
+
+      <div class="compare-row">
+        <div>Temperatura</div>
+        <div id="cmpTempLocal">--</div>
+        <div id="cmpTempExt">--</div>
+        <div id="cmpTempDelta">--</div>
+      </div>
+
+      <div class="compare-row">
+        <div>Umidade</div>
+        <div id="cmpUmiLocal">--</div>
+        <div id="cmpUmiExt">--</div>
+        <div id="cmpUmiDelta">--</div>
+      </div>
+
+      <div class="compare-row">
+        <div>Pressão nível do mar</div>
+        <div id="cmpPresLocal">--</div>
+        <div id="cmpPresExt">--</div>
+        <div id="cmpPresDelta">--</div>
+      </div>
+
+      <div class="compare-row">
+        <div>Ponto de orvalho</div>
+        <div id="cmpOrvLocal">--</div>
+        <div id="cmpOrvExt">--</div>
+        <div id="cmpOrvDelta">--</div>
+      </div>
+
+    </div>
+
+    <div class="external-footer">
+      <div>📍 <strong id="externalLocalFooter">--</strong></div>
+      <div>⛰ Elevação: <strong id="externalElevation">--</strong></div>
+      <div>Atualizado: <strong id="externalTime">--</strong></div>
+      <div>Fonte: <strong id="externalSource">--</strong></div>
+    </div>
+
+  </section>
+
+  <section class="panel">
+
+    <div class="event-head">
+      <div>
+        <div class="panel-title">Eventos recentes</div>
+        <div class="panel-subtitle">Últimos eventos detectados hoje pelo processamento de borda • máximo 10</div>
+      </div>
+
+      <button id="btnLimparEventos">Limpar eventos</button>
+    </div>
+
+    <div id="listaEventos"></div>
+
+  </section>
+
+  <div class="sampling-window">Janela móvel: últimos 60 minutos</div>
+
+  <div class="cards">
+
+    <div class="card">
+      <div class="card-title">Temperatura • BMP180</div>
+      <div id="tempBMP" class="big">--</div>
+      <div class="metric"><span>Média 15 min</span><strong id="bmp15">--</strong></div>
+
+      <div class="extreme">
+        <div class="metric"><span>Mínima do dia</span><strong id="bmpMin">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="bmpMinHora">--</strong></div>
+        <div class="metric"><span>Máxima do dia</span><strong id="bmpMax">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="bmpMaxHora">--</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Temperatura • DHT11</div>
+      <div id="tempDHT" class="big">--</div>
+      <div class="metric"><span>Média 15 min</span><strong id="dht15">--</strong></div>
+
+      <div class="extreme">
+        <div class="metric"><span>Mínima do dia</span><strong id="dhtMin">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="dhtMinHora">--</strong></div>
+        <div class="metric"><span>Máxima do dia</span><strong id="dhtMax">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="dhtMaxHora">--</strong></div>
+      </div>
+
+      <div class="metric"><span>Diferença BMP-DHT</span><strong id="difTemp">--</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Umidade relativa</div>
+      <div id="umi" class="big">--</div>
+      <div class="metric"><span>Média 15 min</span><strong id="umi15">--</strong></div>
+
+      <div class="extreme">
+        <div class="metric"><span>Mínima do dia</span><strong id="umiMin">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="umiMinHora">--</strong></div>
+        <div class="metric"><span>Máxima do dia</span><strong id="umiMax">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="umiMaxHora">--</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pressão • nível do mar</div>
+      <div id="pres" class="big">--</div>
+      <div class="metric"><span>Pressão local</span><strong id="presLocal">--</strong></div>
+      <div class="metric"><span>Média 15 min</span><strong id="pres15">--</strong></div>
+      <div class="metric"><span>Média 60 min</span><strong id="pres60">--</strong></div>
+
+      <div class="extreme">
+        <div class="metric"><span>Mínima do dia</span><strong id="presMin">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="presMinHora">--</strong></div>
+        <div class="metric"><span>Máxima do dia</span><strong id="presMax">--</strong></div>
+        <div class="metric"><span>Horário</span><strong id="presMaxHora">--</strong></div>
+      </div>
+
+      <div class="metric"><span>Variação da janela</span><strong id="variacao">--</strong></div>
+    </div>
+
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Temperatura</div>
+      <div class="chart-info">Pontual + média móvel 15 min</div>
+    </div>
+
+    <canvas id="grafTemp"></canvas>
+    <div id="tipTemp" class="chart-tooltip"></div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line bmp-line"></div>BMP180</div>
+      <div class="legend-item bmp15-legend"><div class="legend-dashed"></div>BMP180 média 15 min</div>
+      <div class="legend-item"><div class="legend-line dht-line"></div>DHT11</div>
+      <div class="legend-item dht15-legend"><div class="legend-dashed"></div>DHT11 média 15 min</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Pressão atmosférica</div>
+      <div class="chart-info">Nível do mar • pontual + média 15 min</div>
+    </div>
+
+    <canvas id="grafPressao"></canvas>
+    <div id="tipPressao" class="chart-tooltip"></div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line pressure-line"></div>Pressão</div>
+      <div class="legend-item pressure15-legend"><div class="legend-dashed"></div>Média 15 min</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Umidade relativa</div>
+      <div class="chart-info">Pontual + média móvel 15 min</div>
+    </div>
+
+    <canvas id="grafUmidade"></canvas>
+    <div id="tipUmidade" class="chart-tooltip"></div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line humidity-line"></div>Umidade</div>
+      <div class="legend-item humidity15-legend"><div class="legend-dashed"></div>Média 15 min</div>
+    </div>
+  </div>
+
+  <div class="footer-status">
+
+    <div>
+      <span class="footer-label">Altitude da estação</span><br>
+      <strong id="altitudeEstacao">--</strong>
+      <div id="origemAltitudeRodape" class="footer-detail">--</div>
+    </div>
+
+    <div>
+      <span class="footer-label">Histórico</span><br>
+      <strong><span id="amostras">0</span>/60</strong>
+    </div>
+
+    <div>
+      <span class="footer-label">Última leitura</span><br>
+      <strong id="ultima">--</strong>
+    </div>
+
+    <div>
+      <span class="footer-label">Hora da estação</span><br>
+      <strong id="horaRodape">--</strong>
+    </div>
+
+    <div class="wifi">
+      <div class="signal">
+        <div class="bar" id="b1"></div>
+        <div class="bar" id="b2"></div>
+        <div class="bar" id="b3"></div>
+        <div class="bar" id="b4"></div>
+        <div class="bar" id="b5"></div>
+      </div>
+
+      <div>
+        <span class="footer-label">Wi-Fi</span><br>
+        <strong id="wifi">--</strong>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+
+<div id="settingsOverlay" class="modal-overlay">
+  <div class="modal settings-modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Configurações da estação</div>
+        <div class="panel-subtitle">Identidade, conectividade e localização em um único lugar.</div>
+      </div>
+      <button id="settingsClose" class="modal-close">×</button>
+    </div>
+
+    <div class="settings-tabs">
+      <button class="settings-tab active" data-settings-tab="identidade">Identidade</button>
+      <button class="settings-tab" data-settings-tab="wifi">Wi-Fi</button>
+      <button class="settings-tab" data-settings-tab="localizacao">Localização</button>
+    </div>
+
+    <section id="settings-identidade" class="settings-section active">
+      <label class="field-label" for="nomeEstacaoInput">Nome da estação</label>
+      <input id="nomeEstacaoInput" class="full-input" type="text" maxlength="48" placeholder="Ex.: Estação Sala 1">
+
+      <label class="field-label" for="hostnameInput">Nome local (mDNS)</label>
+      <input id="hostnameInput" class="full-input" type="text" maxlength="32" placeholder="Ex.: estacao-sala1">
+
+      <div class="panel-subtitle settings-help">Use apenas letras minúsculas, números e hífen. Sem espaços ou acentos.</div>
+      <div class="identity-preview">Endereço local:<strong id="hostnamePreview">http://estacao.local</strong></div>
+
+      <button id="btnSalvarIdentidade" class="primary-action">Salvar identidade</button>
+      <div id="statusIdentidade" class="muted search-status"></div>
+    </section>
+
+    <section id="settings-wifi" class="settings-section">
+      <div class="wifi-current-card">
+        <div class="wifi-current-title">Estado atual</div>
+        <div class="wifi-current-grid">
+          <div><span>Conexão</span><strong id="cfgWifiEstado">--</strong></div>
+          <div><span>Rede atual</span><strong id="cfgWifiSSID">--</strong></div>
+          <div><span>IP</span><strong id="cfgWifiIP">--</strong></div>
+          <div><span>Sinal</span><strong id="cfgWifiRSSI">--</strong></div>
+        </div>
+        <div id="cfgWifiAP" class="wifi-ap-note hidden"></div>
+      </div>
+      <button id="btnAbrirWiFiAvancado" class="secondary-action">Gerenciar redes Wi-Fi</button>
+    </section>
+
+    <section id="settings-localizacao" class="settings-section">
+      <div class="config-current" id="cfgLocalResumo">--</div>
+      <button id="btnAbrirLocalAvancado" class="secondary-action">Alterar localização e altitude</button>
+      <div class="panel-subtitle">Exemplo de busca: Pindamonhangaba - SP</div>
+    </section>
+  </div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div id="modalTitle" class="modal-title">Informação</div>
+      <button id="modalClose" class="modal-close">×</button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<div id="configOverlay" class="modal-overlay">
+  <div class="modal">
+
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Referência meteorológica externa</div>
+        <div class="panel-subtitle">Escolha a cidade/localidade utilizada pela Open-Meteo</div>
+      </div>
+      <button id="configClose" class="modal-close">×</button>
+    </div>
+
+    <div id="localAtualConfig" class="config-current">--</div>
+
+    <div class="search-row">
+      <input id="campoCidade" type="text" placeholder="Ex.: Pindamonhangaba - SP">
+      <button id="btnBuscarCidade">Buscar</button>
+    </div>
+
+    <div id="statusBusca" class="muted search-status"></div>
+    <div id="resultadosCidade"></div>
+
+    <div class="altitude-config">
+      <div class="altitude-config-title">Altitude usada pela estação</div>
+      <div class="panel-subtitle">
+        A escolha do local atualiza automaticamente a altitude. Se você souber a altitude exata do ponto onde o sensor está instalado, pode informá-la manualmente.
+      </div>
+
+      <div class="altitude-current">
+        Atual: <strong id="altitudeConfigAtual">--</strong>
+        <span id="origemAltitudeConfig" class="coords"></span>
+      </div>
+
+      <div class="search-row">
+        <input id="campoAltitude" type="number" step="0.1" min="-500" max="9000" placeholder="Altitude em metros">
+        <button id="btnSalvarAltitude">Salvar manual</button>
+      </div>
+
+      <button id="btnAltitudeAuto" class="secondary-action">
+        ↻ Usar altitude automática deste local
+      </button>
+
+      <div id="statusAltitude" class="muted search-status"></div>
+    </div>
+
+  </div>
+</div>
+
+
+<div id="wifiOverlay" class="modal-overlay">
+  <div class="modal wifi-modal">
+
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Configuração Wi-Fi</div>
+        <div class="panel-subtitle">
+          A nova rede só substitui a anterior depois que a conexão for validada.
+        </div>
+      </div>
+      <button id="wifiClose" class="modal-close">×</button>
+    </div>
+
+    <div class="wifi-current-card">
+      <div class="wifi-current-title">Estado atual</div>
+
+      <div class="wifi-current-grid">
+        <div><span>Conexão</span><strong id="wifiCfgEstado">--</strong></div>
+        <div><span>Rede atual</span><strong id="wifiCfgSSID">--</strong></div>
+        <div><span>IP</span><strong id="wifiCfgIP">--</strong></div>
+        <div><span>Sinal</span><strong id="wifiCfgRSSI">--</strong></div>
+      </div>
+
+      <div id="wifiCfgAP" class="wifi-ap-note hidden"></div>
+    </div>
+
+    <div class="wifi-section-title wifi-known-title">
+      <span>Redes conhecidas</span>
+      <span id="wifiKnownCount" class="wifi-known-count">0/5</span>
+    </div>
+
+    <div class="panel-subtitle">
+      Na inicialização, a estação tenta automaticamente a rede conhecida disponível com melhor sinal.
+    </div>
+
+    <div id="wifiKnownNetworks" class="wifi-known-networks"></div>
+
+    <div class="wifi-section-title">Redes disponíveis</div>
+
+    <button id="btnScanWiFi" class="secondary-action">
+      ↻ Procurar redes próximas
+    </button>
+
+    <div id="wifiScanStatus" class="muted search-status"></div>
+    <div id="wifiNetworks" class="wifi-networks"></div>
+
+    <div class="wifi-manual">
+      <div class="wifi-section-title">Rede selecionada</div>
+
+      <label class="field-label" for="wifiSSIDInput">SSID</label>
+      <input id="wifiSSIDInput" class="full-input" type="text" placeholder="Nome da rede">
+
+      <label class="field-label" for="wifiPasswordInput">Senha</label>
+
+      <div class="password-row">
+        <input id="wifiPasswordInput" class="full-input" type="password" placeholder="Senha da rede">
+        <button id="btnShowPassword" type="button">Mostrar</button>
+      </div>
+
+      <button id="btnSaveWiFi" class="primary-action">
+        Conectar e validar
+      </button>
+
+      <div id="wifiSaveStatus" class="wifi-save-status"></div>
+    </div>
+
+    <div class="wifi-recovery">
+      <div class="wifi-section-title">Recuperação</div>
+
+      <div class="panel-subtitle">
+        Se nenhuma das redes conhecidas estiver disponível, a estação abre automaticamente
+        <strong>EstacaoAmbiental-Setup</strong>.
+      </div>
+
+      <button id="btnForgetWiFi" class="danger secondary-action">
+        Esquecer todas as redes
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
