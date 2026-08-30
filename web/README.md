@@ -378,3 +378,56 @@ $$
 
 A agregação estatística é executada no PostgreSQL/Supabase, preservando
 o modelo de segurança em que o navegador consulta apenas a API Vercel.
+
+
+---
+
+## Etapa 4 — Dashboard Web
+
+A Etapa 4 transforma a página de diagnóstico em um dashboard remoto
+histórico e analítico.
+
+### Funcionalidades
+
+```text
+Agora
+├── status
+├── temperatura
+├── umidade
+├── pressão
+├── ponto de orvalho
+├── tendência
+├── estado geral
+└── RSSI
+
+Histórico
+├── 24 h
+├── 7 dias
+└── 30 dias
+
+Gráficos
+├── temperatura
+├── umidade
+├── pressão ao nível do mar
+└── ponto de orvalho
+
+Resumo
+├── mínimo
+├── média
+├── máximo
+└── amplitude
+
+Comparação
+└── Estação × Open-Meteo
+```
+
+Os gráficos são produzidos no frontend com Chart.js e consomem somente
+os endpoints já homologados:
+
+```text
+/api/agora
+/api/historico
+/api/resumo
+```
+
+Nenhuma nova migração de banco é necessária nesta etapa.
