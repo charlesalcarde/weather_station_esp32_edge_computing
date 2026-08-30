@@ -129,6 +129,23 @@ export async function buscarHistoricoAgregado({
   return await resposta.json();
 }
 
+
+export async function buscarResumoEstatistico({ estacao, inicio, fim }) {
+  const { url } = getConfig();
+  const endpoint = `${url}/rest/v1/rpc/resumo_estacao_v34`;
+
+  const resposta = await supabaseFetch(endpoint, {
+    method: "POST",
+    body: JSON.stringify({
+      p_estacao: estacao,
+      p_inicio: inicio,
+      p_fim: fim
+    })
+  });
+
+  return await resposta.json();
+}
+
 export function calcularStatus(createdAt) {
   if (!createdAt) return "offline";
 
