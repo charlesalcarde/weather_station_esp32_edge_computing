@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dashboard Web da Estação Ambiental ESP32" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <title>Estação Ambiental — Web v3.4</title>
+</head>
+<body>
+<main class="container">
+  <header><p class="kicker">Estação Ambiental ESP32</p><h1>Web v3.4</h1><p>Primeira etapa: validação segura do caminho ESP32 → Supabase → Vercel → navegador.</p></header>
+  <section class="status-card"><div><span class="label">API</span><strong id="api-status">consultando...</strong></div><button id="atualizar" type="button">Atualizar</button></section>
+  <section><h2>Agora</h2><div id="cards" class="grid"></div></section>
+  <section><h2>Resposta de diagnóstico</h2><pre id="json">Aguardando /api/agora...</pre></section>
+</main>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
