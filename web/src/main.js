@@ -1,0 +1,6 @@
+import "./style.css";
+const cards=document.querySelector("#cards"), json=document.querySelector("#json"), status=document.querySelector("#api-status"), atualizar=document.querySelector("#atualizar");
+const valor=(v,u="")=>v===null||v===undefined?"—":`${v}${u}`;
+function render(d){const itens=[["Status",d.status??"—"],["Temperatura",valor(d.temperatura," °C")],["Umidade",valor(d.umidade," %")],["Pressão mar",valor(d.pressao_mar," hPa")],["Pressão local",valor(d.pressao_local," hPa")],["Ponto de orvalho",valor(d.ponto_orvalho," °C")],["Estado geral",d.estado_geral??"—"],["RSSI",valor(d.rssi," dBm")]]; cards.innerHTML=itens.map(([r,v])=>`<article class="card"><span>${r}</span><strong>${v}</strong></article>`).join("");}
+async function carregar(){status.textContent="consultando..."; atualizar.disabled=true; try{const r=await fetch("/api/agora",{cache:"no-store"}); const d=await r.json(); json.textContent=JSON.stringify(d,null,2); if(!r.ok) throw new Error(d.mensagem||`HTTP ${r.status}`); status.textContent="conectada"; render(d);}catch(e){status.textContent="erro"; cards.innerHTML=""; json.textContent=String(e);}finally{atualizar.disabled=false;}}
+atualizar.addEventListener("click",carregar); carregar();
