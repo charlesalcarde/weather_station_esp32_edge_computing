@@ -2,30 +2,58 @@
 
 Camada Web remota da Estação Ambiental ESP32.
 
-> **Local = operacional e resiliente.**  
-> **Web = histórico e analítico.**
+> **Dashboard local = operacional e resiliente.**  
+> **Dashboard Web = histórico e analítico.**
 
-Esta primeira entrega implementa o caminho mínimo de leitura:
+Fluxo validado:
 
 ```text
 ESP32 → Supabase → API Vercel → navegador
 ```
 
+---
+
 ## Índice
 
-- [1. Estado desta etapa](#1-estado-desta-etapa)
+- [1. Estado atual](#1-estado-atual)
 - [2. Estrutura](#2-estrutura)
-- [3. Endpoint implementado](#3-endpoint-implementado)
-- [4. Segurança](#4-segurança)
-- [5. Variáveis de ambiente](#5-variáveis-de-ambiente)
-- [6. Deploy no Vercel](#6-deploy-no-vercel)
-- [7. Teste esperado](#7-teste-esperado)
-- [8. Endpoints planejados](#8-endpoints-planejados)
-- [9. Próximas etapas](#9-próximas-etapas)
+- [3. Endpoint Agora](#3-endpoint-agora)
+- [4. Endpoint Histórico](#4-endpoint-histórico)
+- [5. Resolução temporal](#5-resolução-temporal)
+- [6. Migração necessária no Supabase](#6-migração-necessária-no-supabase)
+- [7. Segurança](#7-segurança)
+- [8. Variáveis de ambiente](#8-variáveis-de-ambiente)
+- [9. Testes](#9-testes)
+- [10. Endpoint Resumo](#10-endpoint-resumo)
+- [11. Próximas etapas](#11-próximas-etapas)
 
-## 1. Estado desta etapa
+---
 
-Implementado: `GET /api/agora`. Ele consulta a leitura mais recente da estação configurada no Supabase. A temperatura Cloud é a canônica do BMP180; a temperatura do DHT11 não é apresentada na Web. A página inicial é apenas diagnóstica e ainda não é o dashboard definitivo.
+## 1. Estado atual
+
+Homologado:
+
+```text
+GET /api/agora
+```
+
+Implementado nesta etapa:
+
+```text
+GET /api/historico
+```
+
+Ainda reservado:
+
+```text
+GET /api/resumo
+```
+
+A página inicial continua sendo uma interface mínima de diagnóstico.
+O dashboard histórico definitivo será construído depois da homologação
+da camada de dados.
+
+---
 
 ## 2. Estrutura
 
@@ -48,35 +76,187 @@ web/
     └── style.css
 ```
 
-`historico.js` e `resumo.js` retornam HTTP `501` enquanto não forem implementados.
+A Etapa 2 também adiciona ao repositório:
 
-## 3. Endpoint implementado
+```text
+cloud/
+└── supabase/
+    └── migrations/
+        └── 04_historico_agregado_v3_4.sql
+```
+
+---
+
+## 3. Endpoint Agora
 
 ### `GET /api/agora`
 
-O navegador não consulta `public.leituras` diretamente. O endpoint devolve a última leitura e um subconjunto controlado dos dados atuais.
+Permanece inalterado em relação à versão homologada.
 
-O status é inferido de `created_at`:
-
-```text
-menos de 2 min  → online
-2 a 5 min       → atraso
-mais de 5 min   → offline
-```
-
-## 4. Segurança
+Exemplo:
 
 ```text
-Browser → API Vercel → Supabase
+/api/agora
 ```
 
-A credencial de leitura permanece somente no ambiente servidor do Vercel. Nunca coloque `SUPABASE_SERVICE_ROLE_KEY` em HTML, JavaScript do navegador, firmware, GitHub ou `.env.example`.
+Responsabilidade:
 
-A Service Role possui privilégios elevados. Nesta etapa é utilizada apenas pela função server-side, enquanto a API restringe a estação e os campos retornados.
+```text
+estado atual
+├── medições locais
+├── estados Edge
+├── conectividade
+└── referência Open-Meteo
+```
 
-## 5. Variáveis de ambiente
+---
 
-No Vercel configure:
+## 4. Endpoint Histórico
+
+### Consultas prontas
+
+```text
+/api/historico?periodo=24h
+/api/historico?periodo=7d
+/api/historico?periodo=30d
+```
+
+Consulta personalizada:
+
+```text
+/api/historico?inicio=2026-08-01&fim=2026-08-30
+```
+
+Opcionalmente:
+
+```text
+/api/historico?estacao=EA-0001&periodo=7d
+```
+
+Nesta etapa, por segurança, a API somente aceita a estação configurada
+em `ESTACAO_ID`.
+
+### Estrutura de resposta
+
+```json
+{
+  "estacao": "EA-0001",
+  "periodo": {
+    "tipo": "7d",
+    "inicio": "2026-08-23T22:00:00.000Z",
+    "fim": "2026-08-30T22:00:00.000Z"
+  },
+  "resolucao": "15min",
+  "intervalo_minutos": 15,
+  "fuso_dos_timestamps": "UTC",
+  "amostras_brutas": 10080,
+  "pontos": 672,
+  "dados": [
+    {
+      "timestamp": "2026-08-23T22:00:00+00:00",
+      "temperatura": 22.4,
+      "umidade": 58.1,
+      "pressao_mar": 1014.3,
+      "pressao_local": 935.0,
+      "ponto_orvalho": 13.6,
+      "externo_temperatura": 23.0,
+      "externo_umidade": 56.0,
+      "externo_pressao_mar": 1013.8,
+      "amostras": 15
+    }
+  ]
+}
+```
+
+Os timestamps são entregues em UTC. O frontend será responsável por
+formatá-los no fuso de exibição da estação/usuário.
+
+---
+
+## 5. Resolução temporal
+
+A resolução é escolhida automaticamente segundo a duração da consulta.
+
+| Duração | Resolução | Intervalo |
+|---|---|---:|
+| até 24 h | `1min` | 1 minuto |
+| até 7 dias | `15min` | 15 minutos |
+| até 31 dias | `1h` | 60 minutos |
+| acima de 31 dias | `1d` | 1 dia |
+
+O período máximo aceito por uma única consulta é de 365 dias.
+
+A agregação é executada dentro do PostgreSQL/Supabase. Isso evita
+transferir todas as leituras brutas para o Vercel antes de gerar os
+pontos do gráfico.
+
+---
+
+## 6. Migração necessária no Supabase
+
+Antes de testar `/api/historico`, execute no SQL Editor do Supabase:
+
+```text
+cloud/supabase/migrations/04_historico_agregado_v3_4.sql
+```
+
+A migração cria:
+
+```text
+public.historico_estacao_v34(...)
+```
+
+A função:
+
+- agrega os dados diretamente no banco;
+- retorna um único objeto JSON;
+- aceita buckets de 1 min, 15 min, 1 h e 1 dia;
+- limita o período a 365 dias;
+- não concede acesso a `anon`;
+- não concede acesso a `authenticated`;
+- concede execução apenas a `service_role`.
+
+Isso preserva o modelo:
+
+```text
+Browser
+   ↓
+API Vercel
+   ↓
+função controlada no Supabase
+   ↓
+public.leituras
+```
+
+---
+
+## 7. Segurança
+
+A tabela `public.leituras` não precisa receber uma política pública de
+`SELECT`.
+
+A credencial do Supabase permanece somente nas funções server-side do
+Vercel.
+
+Nunca publicar:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+em:
+
+- GitHub;
+- firmware;
+- `index.html`;
+- `src/main.js`;
+- qualquer JavaScript entregue ao navegador.
+
+---
+
+## 8. Variáveis de ambiente
+
+No Vercel:
 
 ```text
 SUPABASE_URL
@@ -84,48 +264,117 @@ SUPABASE_SERVICE_ROLE_KEY
 ESTACAO_ID
 ```
 
-Para a instalação atual:
+Instalação atual:
 
 ```text
 ESTACAO_ID=EA-0001
 ```
 
-Não faça commit de `.env` com valores reais.
+Nenhuma variável nova foi adicionada nesta etapa.
 
-## 6. Deploy no Vercel
+---
 
-Ao importar o repositório no Vercel, configure `web` como **Root Directory**.
+## 9. Testes
 
-```text
-Framework Preset: Vite
-Build Command: npm run build
-Output Directory: dist
-```
-
-Cadastre as variáveis de ambiente e execute o deploy.
-
-## 7. Teste esperado
-
-Acesse `https://SEU-DOMINIO.vercel.app/api/agora`. O retorno esperado é um JSON contendo, entre outros, `estacao`, `status`, `temperatura`, `umidade`, `pressao_mar` e `estado_geral`. A página inicial também consulta o endpoint e mostra a resposta completa para diagnóstico.
-
-## 8. Endpoints planejados
+Depois do commit no GitHub e do redeploy automático do Vercel, testar
+nesta ordem:
 
 ```text
-GET /api/agora       implementado
-GET /api/historico   próxima etapa
-GET /api/resumo      etapa seguinte
+/api/agora
 ```
 
-O histórico deverá atender Hoje, 24 h, 7 dias, 30 dias, mês e intervalo personalizado. O resumo deverá produzir mínimo, média, máximo e amplitude do período.
+O endpoint já homologado deve continuar funcionando.
 
-## 9. Próximas etapas
+Depois:
 
 ```text
-1. homologar acesso Vercel → Supabase
-2. implementar /api/historico
-3. implementar agregação temporal
-4. implementar /api/resumo
-5. construir dashboard histórico
-6. adicionar comparação Estação × Open-Meteo
-7. incorporar eventos Cloud
+/api/historico?periodo=24h
 ```
+
+Em seguida:
+
+```text
+/api/historico?periodo=7d
+```
+
+E:
+
+```text
+/api/historico?periodo=30d
+```
+
+Resultado esperado:
+
+```text
+HTTP 200
+dados = array
+pontos > 0
+amostras_brutas > 0
+```
+
+---
+
+## 10. Endpoint Resumo
+
+`/api/resumo` continua retornando HTTP `501`.
+
+Será a próxima camada analítica:
+
+```text
+mínimo
+média
+máximo
+amplitude
+```
+
+---
+
+## 11. Próximas etapas
+
+Após homologar `/api/historico`:
+
+```text
+1. implementar /api/resumo
+2. criar gráficos históricos
+3. criar filtros Hoje / 24 h / 7 dias / 30 dias
+4. criar período personalizado
+5. comparar Estação × Open-Meteo
+6. incorporar eventos Cloud
+7. evoluir análises ambientais
+```
+
+
+---
+
+## Etapa 3 — Endpoint de resumo analítico
+
+Implementado:
+
+```text
+GET /api/resumo
+```
+
+Consultas:
+
+```text
+/api/resumo?periodo=24h
+/api/resumo?periodo=7d
+/api/resumo?periodo=30d
+/api/resumo?inicio=2026-08-01&fim=2026-08-30
+```
+
+A migração necessária é:
+
+```text
+cloud/supabase/migrations/05_resumo_estatistico_v3_4.sql
+```
+
+O endpoint retorna mínimo, média e máximo das variáveis principais.
+Para temperatura e pressão também retorna amplitude:
+
+$$
+A = x_{max} - x_{min}
+$$
+
+A agregação estatística é executada no PostgreSQL/Supabase, preservando
+o modelo de segurança em que o navegador consulta apenas a API Vercel.
