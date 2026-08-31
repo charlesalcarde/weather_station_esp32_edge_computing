@@ -473,3 +473,23 @@ O tema respeita a preferência do sistema na primeira visita e armazena a escolh
 ### Banco de dados
 
 Nenhuma nova migração SQL é necessária para a Etapa 5.
+
+
+---
+
+## Revisão final da Etapa 5
+
+A revisão final acrescenta:
+
+- logotipo no cabeçalho;
+- atualização automática do estado atual a cada 60 segundos;
+- contador regressivo para a próxima leitura Web;
+- atualização automática dos gráficos e do resumo a cada 5 minutos;
+- atualização imediata pelo botão `Atualizar`;
+- atualização ao retornar para uma aba que ficou em segundo plano;
+- remoção do bloco de diagnóstico técnico da interface pública.
+
+A página não é recarregada. Apenas os dados necessários são consultados
+novamente pelas APIs já homologadas.
+
+Nenhuma alteração em firmware, Supabase ou migrações SQL é necessária.
