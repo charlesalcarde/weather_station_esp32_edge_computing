@@ -3,41 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Dashboard Web histórico e analítico da Estação Ambiental ESP32"
-    />
+    <meta name="description" content="Dashboard Web histórico e analítico da Estação Ambiental ESP32" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>Estação Ambiental — Dashboard Web v3.4</title>
+    <script>
+      (() => {
+        const salvo = localStorage.getItem("ea-theme");
+        const escuroSistema = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.theme = salvo || (escuroSistema ? "dark" : "light");
+      })();
+    </script>
   </head>
   <body>
     <main class="container">
       <header class="hero">
-        <div>
+        <div class="hero-main">
           <p class="kicker">Estação Ambiental ESP32</p>
           <h1>Dashboard Web v3.4</h1>
-          <p class="subtitle">
-            Histórico, análise e referência externa da estação ambiental.
-          </p>
+          <p class="subtitle">Histórico, análise e referência externa da estação ambiental.</p>
+
+          <div class="station-identity" aria-label="Identificação da estação">
+            <span><b>Código</b> <strong id="station-code">—</strong></span>
+            <span><b>Nome</b> <strong id="station-name">—</strong></span>
+            <span><b>Localização</b> <strong id="station-location">—</strong></span>
+            <span><b>Altitude</b> <strong id="station-altitude">—</strong></span>
+          </div>
         </div>
 
-        <div class="connection-pill">
-          <span class="dot" id="connection-dot"></span>
-          <span id="connection-text">consultando...</span>
+        <div class="hero-actions">
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Alternar tema">
+            <span id="theme-icon" aria-hidden="true">☾</span>
+            <span id="theme-text">Escuro</span>
+          </button>
+          <div class="connection-pill">
+            <span class="dot" id="connection-dot"></span>
+            <span id="connection-text">consultando...</span>
+          </div>
         </div>
       </header>
 
       <section class="section">
         <div class="section-title-row">
-          <div>
-            <p class="eyebrow">Agora</p>
-            <h2>Estado atual</h2>
-          </div>
+          <div><p class="eyebrow">Agora</p><h2>Estado atual</h2></div>
           <button id="atualizar-agora" type="button">Atualizar</button>
         </div>
-
         <div id="cards-agora" class="grid cards-now"></div>
-
         <div class="current-meta">
           <span id="ultima-leitura">Última leitura: —</span>
           <span id="nome-estacao">Estação: —</span>
@@ -46,94 +56,59 @@
 
       <section class="section">
         <div class="section-title-row period-row">
-          <div>
-            <p class="eyebrow">Histórico</p>
-            <h2>Evolução temporal</h2>
-          </div>
-
+          <div><p class="eyebrow">Histórico</p><h2>Evolução temporal</h2></div>
           <div class="period-selector" role="group" aria-label="Período">
             <button data-periodo="24h" class="period-button active" type="button">24 h</button>
             <button data-periodo="7d" class="period-button" type="button">7 dias</button>
             <button data-periodo="30d" class="period-button" type="button">30 dias</button>
+            <button data-periodo="mes" class="period-button" type="button">Mês atual</button>
+            <button data-periodo="personalizado" class="period-button" type="button">Personalizado</button>
           </div>
         </div>
 
-        <div class="history-meta">
-          <span id="periodo-info">Período: 24 h</span>
-          <span id="resolucao-info">Resolução: —</span>
-          <span id="amostras-info">Amostras: —</span>
+        <div id="custom-period" class="custom-period hidden">
+          <label><span>Data inicial</span><input id="data-inicio" type="date" /></label>
+          <label><span>Data final</span><input id="data-fim" type="date" /></label>
+          <button id="aplicar-periodo" type="button">Aplicar período</button>
+          <span id="erro-periodo" class="form-error" role="status"></span>
+        </div>
+
+        <div class="history-toolbar">
+          <div class="history-meta">
+            <span id="periodo-info">Período: 24 h</span>
+            <span id="resolucao-info">Resolução: —</span>
+            <span id="amostras-info">Amostras: —</span>
+          </div>
+          <div class="series-controls" aria-label="Séries dos gráficos">
+            <label><input id="serie-estacao" type="checkbox" checked /> Estação</label>
+            <label><input id="serie-openmeteo" type="checkbox" checked /> Open-Meteo</label>
+          </div>
         </div>
 
         <div class="chart-grid">
-          <article class="chart-card">
-            <div class="chart-title-row">
-              <h3>Temperatura</h3>
-              <span>°C</span>
-            </div>
-            <div class="chart-wrap"><canvas id="chart-temperatura"></canvas></div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-title-row">
-              <h3>Umidade</h3>
-              <span>%</span>
-            </div>
-            <div class="chart-wrap"><canvas id="chart-umidade"></canvas></div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-title-row">
-              <h3>Pressão ao nível do mar</h3>
-              <span>hPa</span>
-            </div>
-            <div class="chart-wrap"><canvas id="chart-pressao"></canvas></div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-title-row">
-              <h3>Ponto de orvalho</h3>
-              <span>°C</span>
-            </div>
-            <div class="chart-wrap"><canvas id="chart-orvalho"></canvas></div>
-          </article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Temperatura</h3><span>°C</span></div><div class="chart-wrap"><canvas id="chart-temperatura"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Umidade</h3><span>%</span></div><div class="chart-wrap"><canvas id="chart-umidade"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Pressão ao nível do mar</h3><span>hPa</span></div><div class="chart-wrap"><canvas id="chart-pressao"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Ponto de orvalho</h3><span>°C</span></div><div class="chart-wrap"><canvas id="chart-orvalho"></canvas></div></article>
         </div>
       </section>
 
       <section class="section">
-        <div>
-          <p class="eyebrow">Análise</p>
-          <h2>Resumo do período</h2>
+        <div><p class="eyebrow">Diferenças</p><h2>Δ Estação − Open-Meteo</h2><p class="section-note">Valores positivos indicam medição da estação acima da referência externa.</p></div>
+        <div class="delta-grid">
+          <article class="chart-card"><div class="chart-title-row"><h3>Δ Temperatura</h3><span>°C</span></div><div class="chart-wrap delta"><canvas id="chart-delta-temperatura"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Δ Umidade</h3><span>p.p.</span></div><div class="chart-wrap delta"><canvas id="chart-delta-umidade"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><h3>Δ Pressão</h3><span>hPa</span></div><div class="chart-wrap delta"><canvas id="chart-delta-pressao"></canvas></div></article>
         </div>
-
-        <div id="cards-resumo" class="summary-grid"></div>
       </section>
 
-      <section class="section">
-        <div>
-          <p class="eyebrow">Referência</p>
-          <h2>Estação × Open-Meteo</h2>
-        </div>
-
-        <div id="cards-comparacao" class="comparison-grid"></div>
-      </section>
+      <section class="section"><div><p class="eyebrow">Análise</p><h2>Resumo do período</h2></div><div id="cards-resumo" class="summary-grid"></div></section>
+      <section class="section"><div><p class="eyebrow">Referência</p><h2>Estação × Open-Meteo</h2></div><div id="cards-comparacao" class="comparison-grid"></div></section>
 
       <section class="section diagnostics">
-        <details>
-          <summary>Diagnóstico técnico</summary>
-          <div class="diagnostic-grid">
-            <div>
-              <h3>/api/agora</h3>
-              <pre id="json-agora">Aguardando...</pre>
-            </div>
-            <div>
-              <h3>/api/resumo</h3>
-              <pre id="json-resumo">Aguardando...</pre>
-            </div>
-          </div>
-        </details>
+        <details><summary>Diagnóstico técnico</summary><div class="diagnostic-grid"><div><h3>/api/agora</h3><pre id="json-agora">Aguardando...</pre></div><div><h3>/api/resumo</h3><pre id="json-resumo">Aguardando...</pre></div></div></details>
       </section>
     </main>
-
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

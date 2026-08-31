@@ -431,3 +431,45 @@ os endpoints já homologados:
 ```
 
 Nenhuma nova migração de banco é necessária nesta etapa.
+
+
+---
+
+## Etapa 5 — Histórico avançado, identidade e tema
+
+### Índice da etapa
+
+- [Períodos](#períodos)
+- [Séries e diferenças](#séries-e-diferenças)
+- [Identidade da estação](#identidade-da-estação)
+- [Tema claro e escuro](#tema-claro-e-escuro)
+- [Banco de dados](#banco-de-dados)
+
+### Períodos
+
+O dashboard passa a oferecer 24 h, 7 dias, 30 dias, mês atual e intervalo personalizado.
+O intervalo personalizado reutiliza o suporte já existente a `inicio` e `fim` em `/api/historico` e `/api/resumo`.
+
+### Séries e diferenças
+
+É possível mostrar ou ocultar Estação e Open-Meteo nos gráficos comparativos. A etapa também acrescenta séries temporais de diferença.
+
+A diferença é definida por:
+
+$$
+\Delta = x_{estacao} - x_{OpenMeteo}
+$$
+
+Foram incluídos gráficos de $\Delta$ para temperatura, umidade e pressão ao nível do mar.
+
+### Identidade da estação
+
+O cabeçalho apresenta código, nome, localização e altitude obtidos da API atual. A localização exibida usa o campo de localidade da referência externa configurada para a estação.
+
+### Tema claro e escuro
+
+O tema respeita a preferência do sistema na primeira visita e armazena a escolha explícita em `localStorage`.
+
+### Banco de dados
+
+Nenhuma nova migração SQL é necessária para a Etapa 5.
