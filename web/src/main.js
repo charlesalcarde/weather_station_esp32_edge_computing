@@ -5,6 +5,12 @@ let filtroAtual = { tipo: "periodo", valor: "24h", rotulo: "24 h" };
 let ultimoHistorico = null;
 const charts = {};
 
+const INTERVALO_AGORA_S = 60;
+const INTERVALO_HISTORICO_MS = 5 * 60 * 1000;
+let segundosParaAtualizar = INTERVALO_AGORA_S;
+let atualizandoAgora = false;
+let atualizandoHistorico = false;
+
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
@@ -64,7 +70,6 @@ function renderAgora(d) {
   $("#cards-agora").innerHTML = itens.map(([r,v]) => card(r,v)).join("");
   $("#ultima-leitura").textContent = `Última leitura: ${fmtDataHora(d.ultima_leitura)}`;
   $("#nome-estacao").textContent = `Estação: ${d.nome_estacao || d.estacao || "—"}`;
-  $("#json-agora").textContent = JSON.stringify(d, null, 2);
 }
 
 async function carregarAgora() {
@@ -77,7 +82,6 @@ async function carregarAgora() {
     return dados;
   } catch (erro) {
     setConexao("offline");
-    $("#json-agora").textContent = String(erro);
     throw erro;
   }
 }
@@ -183,7 +187,6 @@ function renderResumo(r) {
   const ext=r.externo||{};
   const comps=[["Temperatura média",r.temperatura?.media,ext.temperatura?.media,"°C"],["Umidade média",r.umidade?.media,ext.umidade?.media,"%"],["Pressão média",r.pressao_mar?.media,ext.pressao_mar?.media,"hPa"]];
   $("#cards-comparacao").innerHTML=comps.map(([rotulo,est,ex,un])=>{ const d=delta(est,ex); const dt=d===null?"—":`${d>=0?"+":""}${fmtNumero(d)} ${un}`; return `<article class="comparison-card"><h3>${rotulo}</h3><div class="comparison-values"><div><span>Estação</span><strong>${fmtNumero(est)} ${un}</strong></div><div><span>Open-Meteo</span><strong>${fmtNumero(ex)} ${un}</strong></div><div><span>Δ</span><strong>${dt}</strong></div></div></article>`; }).join("");
-  $("#json-resumo").textContent=JSON.stringify(r,null,2);
 }
 
 async function carregarHistoricoEResumo() {
@@ -224,8 +227,85 @@ function aplicarTema(tema, persistir=true) {
   if(ultimoHistorico) renderHistorico(ultimoHistorico);
 }
 
+
+function atualizarContador() {
+  const el = $("#auto-refresh-info");
+  if (!el) return;
+  el.textContent = atualizandoAgora
+    ? "Atualizando..."
+    : `Próxima atualização em ${segundosParaAtualizar} s`;
+}
+
+async function atualizarAgoraAutomaticamente() {
+  if (atualizandoAgora) return;
+  atualizandoAgora = true;
+  atualizarContador();
+  try {
+    await carregarAgora();
+    segundosParaAtualizar = INTERVALO_AGORA_S;
+  } catch (erro) {
+    console.error("[auto/agora]", erro);
+    segundosParaAtualizar = INTERVALO_AGORA_S;
+  } finally {
+    atualizandoAgora = false;
+    atualizarContador();
+  }
+}
+
+async function atualizarHistoricoAutomaticamente() {
+  if (atualizandoHistorico) return;
+  atualizandoHistorico = true;
+  try {
+    await carregarHistoricoEResumo();
+  } catch (erro) {
+    console.error("[auto/historico]", erro);
+  } finally {
+    atualizandoHistorico = false;
+  }
+}
+
+function iniciarAtualizacaoAutomatica() {
+  atualizarContador();
+
+  setInterval(() => {
+    if (document.hidden) return;
+    segundosParaAtualizar -= 1;
+    if (segundosParaAtualizar <= 0) {
+      segundosParaAtualizar = INTERVALO_AGORA_S;
+      atualizarAgoraAutomaticamente();
+    } else {
+      atualizarContador();
+    }
+  }, 1000);
+
+  setInterval(() => {
+    if (!document.hidden) atualizarHistoricoAutomaticamente();
+  }, INTERVALO_HISTORICO_MS);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      segundosParaAtualizar = INTERVALO_AGORA_S;
+      atualizarAgoraAutomaticamente();
+      atualizarHistoricoAutomaticamente();
+    }
+  });
+}
+
 $("#theme-toggle").addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="dark"?"light":"dark"));
-$("#atualizar-agora").addEventListener("click",async()=>{ const b=$("#atualizar-agora"); b.disabled=true; try{await carregarAgora();}finally{b.disabled=false;} });
+$("#atualizar-agora").addEventListener("click", async () => {
+  const b = $("#atualizar-agora");
+  b.disabled = true;
+  atualizandoAgora = true;
+  atualizarContador();
+  try {
+    await carregarAgora();
+    segundosParaAtualizar = INTERVALO_AGORA_S;
+  } finally {
+    atualizandoAgora = false;
+    b.disabled = false;
+    atualizarContador();
+  }
+});
 $$(".period-button").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
 $("#serie-estacao").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#serie-openmeteo").addEventListener("change",aplicarVisibilidadeGlobal);
@@ -244,5 +324,6 @@ async function iniciar() {
   aplicarTema(document.documentElement.dataset.theme||"light",false);
   try { await Promise.all([carregarAgora(),carregarHistoricoEResumo()]); }
   catch(erro){ console.error("[dashboard]",erro); }
+  iniciarAtualizacaoAutomatica();
 }
 iniciar();
