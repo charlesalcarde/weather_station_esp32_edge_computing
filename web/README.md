@@ -493,3 +493,20 @@ A página não é recarregada. Apenas os dados necessários são consultados
 novamente pelas APIs já homologadas.
 
 Nenhuma alteração em firmware, Supabase ou migrações SQL é necessária.
+
+## Revisão de UX/UI — identidade e explicabilidade
+
+A interface Web passou a priorizar a identidade **Estação Ambiental Experimental** em lugar do rótulo técnico "Dashboard Web v3.4".
+
+Principais objetivos da revisão:
+
+- comunicar explicitamente que o projeto é baseado em **Computação de Borda (Edge Computing)**;
+- destacar que aquisição, médias, tendências, conversões, estados ambientais e detecção de eventos são realizados localmente no ESP32;
+- explicar que a Cloud amplia o sistema, mas não executa o processamento ambiental principal;
+- informar que as medições atuais representam o microambiente interno/isolado em que a estação está instalada;
+- diferenciar dados **medidos pelos sensores**, informações **calculadas no Edge** e indicadores de **conectividade**;
+- explicar grandezas e conceitos por meio de botões `i` e modais contextuais;
+- contextualizar a **Open-Meteo** como fonte meteorológica externa de referência;
+- manter a versão `v3.4` apenas como metadado técnico discreto no rodapé.
+
+A revisão é estritamente de frontend/UX e não altera as APIs, o banco Supabase ou o firmware homologado.

@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" sizes="128x128" href="/favicon-v345.png?v=3451" />
     <link rel="shortcut icon" href="/favicon.ico?v=3451" />
-
-    <meta name="description" content="Dashboard Web histórico e analítico da Estação Ambiental ESP32" />
-<title>Estação Ambiental — Dashboard Web v3.4</title>
+    <meta name="description" content="Estação Ambiental Experimental baseada em Computação de Borda, com monitoramento local, histórico e análise remota." />
+    <title>Estação Ambiental Experimental — EA-0001</title>
     <script>
       (() => {
         const salvo = localStorage.getItem("ea-theme");
@@ -24,13 +23,21 @@
             <img class="brand-logo" src="/favicon-v345.png?v=3451" alt="Logotipo da Estação Ambiental ESP32" />
             <p class="kicker">Estação Ambiental ESP32</p>
           </div>
-          <h1>Dashboard Web v3.4</h1>
-          <p class="subtitle">Histórico, análise e referência externa da estação ambiental.</p>
+          <h1>Estação Ambiental Experimental</h1>
+          <p class="subtitle">Monitoramento ambiental com <strong>Computação de Borda (Edge Computing)</strong>.</p>
+
+          <div class="hero-links">
+            <button class="about-button info-action" type="button" data-info="sobre-estacao">
+              <span class="info-glyph" aria-hidden="true">i</span>
+              Conheça a estação
+            </button>
+            <span class="edge-badge">Processamento principal no ESP32</span>
+          </div>
 
           <div class="station-identity" aria-label="Identificação da estação">
             <span><b>Código</b> <strong id="station-code">—</strong></span>
             <span><b>Nome</b> <strong id="station-name">—</strong></span>
-            <span><b>Localização</b> <strong id="station-location">—</strong></span>
+            <span><b>Localização de referência</b> <strong id="station-location">—</strong></span>
             <span><b>Altitude</b> <strong id="station-altitude">—</strong></span>
           </div>
         </div>
@@ -47,14 +54,41 @@
         </div>
       </header>
 
+      <aside class="edge-callout" aria-label="Independência da estação">
+        <div class="edge-callout-icon" aria-hidden="true">✓</div>
+        <div>
+          <strong>Estação independente da nuvem</strong>
+          <p>A aquisição dos sensores, médias, tendências, conversões, estados ambientais e detecção de eventos são realizados <strong>localmente no ESP32</strong>. A Internet amplia o sistema com histórico remoto e referência meteorológica, mas não executa o processamento ambiental principal.</p>
+        </div>
+        <button class="info-icon info-action" type="button" data-info="edge-computing" aria-label="Saiba mais sobre Computação de Borda">i</button>
+      </aside>
+
       <section class="section">
         <div class="section-title-row">
-          <div><p class="eyebrow">Agora</p><h2>Estado atual</h2></div>
+          <div>
+            <p class="eyebrow">Agora</p>
+            <div class="title-with-info">
+              <h2>Condições medidas pela estação</h2>
+              <button class="info-icon info-action" type="button" data-info="medicoes-locais" aria-label="Explicação sobre as medições locais">i</button>
+            </div>
+          </div>
           <div class="refresh-actions">
             <span id="auto-refresh-info" class="auto-refresh-info">Próxima atualização em 60 s</span>
             <button id="atualizar-agora" type="button">Atualizar</button>
           </div>
         </div>
+
+        <div class="context-note">
+          <span class="context-note-icon" aria-hidden="true">i</span>
+          <p><strong>Contexto da medição:</strong> a estação encontra-se atualmente em ambiente interno/isolado do meio externo. Portanto, estas leituras representam o microambiente onde o equipamento está instalado e não, necessariamente, as condições meteorológicas externas de Campinas.</p>
+        </div>
+
+        <div class="data-legend" aria-label="Origem das informações">
+          <span class="legend-chip measured">Medido pelos sensores</span>
+          <span class="legend-chip calculated">Calculado no Edge</span>
+          <span class="legend-chip connectivity">Conectividade</span>
+        </div>
+
         <div id="cards-agora" class="grid cards-now"></div>
         <div class="current-meta">
           <span id="ultima-leitura">Última leitura: —</span>
@@ -62,9 +96,34 @@
         </div>
       </section>
 
+      <section class="section reference-intro">
+        <div class="reference-header">
+          <div>
+            <p class="eyebrow">Referência externa</p>
+            <div class="title-with-info">
+              <h2>Estação × Open-Meteo</h2>
+              <button class="info-icon info-action" type="button" data-info="open-meteo" aria-label="O que é Open-Meteo">i</button>
+            </div>
+            <p class="section-note">A estação mede o seu ambiente local. A Open-Meteo fornece uma referência meteorológica externa para a localização configurada. <span id="comparacao-periodo-info">Comparação estatística: 24 h.</span></p>
+          </div>
+          <div class="source-comparison" aria-label="Fontes comparadas">
+            <div><span>Local</span><strong>ESP32 + sensores</strong></div>
+            <span class="versus">×</span>
+            <div><span>Externo</span><strong>Open-Meteo</strong></div>
+          </div>
+        </div>
+        <div id="cards-comparacao" class="comparison-grid"></div>
+      </section>
+
       <section class="section">
         <div class="section-title-row period-row">
-          <div><p class="eyebrow">Histórico</p><h2>Evolução temporal</h2></div>
+          <div>
+            <p class="eyebrow">Histórico</p>
+            <div class="title-with-info">
+              <h2>Evolução temporal</h2>
+              <button class="info-icon info-action" type="button" data-info="historico" aria-label="Explicação sobre o histórico">i</button>
+            </div>
+          </div>
           <div class="period-selector" role="group" aria-label="Período">
             <button data-periodo="24h" class="period-button active" type="button">24 h</button>
             <button data-periodo="7d" class="period-button" type="button">7 dias</button>
@@ -94,15 +153,22 @@
         </div>
 
         <div class="chart-grid">
-          <article class="chart-card"><div class="chart-title-row"><h3>Temperatura</h3><span>°C</span></div><div class="chart-wrap"><canvas id="chart-temperatura"></canvas></div></article>
-          <article class="chart-card"><div class="chart-title-row"><h3>Umidade</h3><span>%</span></div><div class="chart-wrap"><canvas id="chart-umidade"></canvas></div></article>
-          <article class="chart-card"><div class="chart-title-row"><h3>Pressão ao nível do mar</h3><span>hPa</span></div><div class="chart-wrap"><canvas id="chart-pressao"></canvas></div></article>
-          <article class="chart-card"><div class="chart-title-row"><h3>Ponto de orvalho</h3><span>°C</span></div><div class="chart-wrap"><canvas id="chart-orvalho"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><div class="title-with-info compact"><h3>Temperatura</h3><button class="info-icon info-action" type="button" data-info="temperatura" aria-label="Explicação sobre temperatura">i</button></div><span>°C</span></div><div class="chart-wrap"><canvas id="chart-temperatura"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><div class="title-with-info compact"><h3>Umidade</h3><button class="info-icon info-action" type="button" data-info="umidade" aria-label="Explicação sobre umidade">i</button></div><span>%</span></div><div class="chart-wrap"><canvas id="chart-umidade"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><div class="title-with-info compact"><h3>Pressão ao nível do mar</h3><button class="info-icon info-action" type="button" data-info="pressao-mar" aria-label="Explicação sobre pressão ao nível do mar">i</button></div><span>hPa</span></div><div class="chart-wrap"><canvas id="chart-pressao"></canvas></div></article>
+          <article class="chart-card"><div class="chart-title-row"><div class="title-with-info compact"><h3>Ponto de orvalho</h3><button class="info-icon info-action" type="button" data-info="ponto-orvalho" aria-label="Explicação sobre ponto de orvalho">i</button></div><span>°C</span></div><div class="chart-wrap"><canvas id="chart-orvalho"></canvas></div></article>
         </div>
       </section>
 
       <section class="section">
-        <div><p class="eyebrow">Diferenças</p><h2>Δ Estação − Open-Meteo</h2><p class="section-note">Valores positivos indicam medição da estação acima da referência externa.</p></div>
+        <div>
+          <p class="eyebrow">Diferenças</p>
+          <div class="title-with-info">
+            <h2>Δ Estação − Open-Meteo</h2>
+            <button class="info-icon info-action" type="button" data-info="delta" aria-label="Explicação sobre diferenças">i</button>
+          </div>
+          <p class="section-note">Valores positivos indicam medição da estação acima da referência externa.</p>
+        </div>
         <div class="delta-grid">
           <article class="chart-card"><div class="chart-title-row"><h3>Δ Temperatura</h3><span>°C</span></div><div class="chart-wrap delta"><canvas id="chart-delta-temperatura"></canvas></div></article>
           <article class="chart-card"><div class="chart-title-row"><h3>Δ Umidade</h3><span>p.p.</span></div><div class="chart-wrap delta"><canvas id="chart-delta-umidade"></canvas></div></article>
@@ -110,9 +176,38 @@
         </div>
       </section>
 
-      <section class="section"><div><p class="eyebrow">Análise</p><h2>Resumo do período</h2></div><div id="cards-resumo" class="summary-grid"></div></section>
-      <section class="section"><div><p class="eyebrow">Referência</p><h2>Estação × Open-Meteo</h2></div><div id="cards-comparacao" class="comparison-grid"></div></section>
-</main>
+      <section class="section">
+        <div>
+          <p class="eyebrow">Análise</p>
+          <div class="title-with-info">
+            <h2>Resumo do período</h2>
+            <button class="info-icon info-action" type="button" data-info="resumo" aria-label="Explicação sobre o resumo">i</button>
+          </div>
+        </div>
+        <div id="cards-resumo" class="summary-grid"></div>
+      </section>
+
+      <footer class="footer">
+        <div>
+          <strong>Estação Ambiental Experimental EA-0001</strong>
+          <span>Projeto de Computação de Borda com ESP32</span>
+        </div>
+        <div class="footer-meta">
+          <span>Dashboard Web</span>
+          <span>v3.4</span>
+        </div>
+      </footer>
+    </main>
+
+    <div id="info-modal" class="modal-backdrop hidden" role="presentation">
+      <section class="info-modal" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+        <button id="info-modal-close" class="modal-close" type="button" aria-label="Fechar">×</button>
+        <p id="info-modal-eyebrow" class="eyebrow">Informação</p>
+        <h2 id="info-modal-title">—</h2>
+        <div id="info-modal-body" class="modal-body"></div>
+      </section>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
