@@ -74,11 +74,25 @@ async function supabaseFetch(endpoint, options = {}) {
     ...options,
     headers: {
       apikey: serviceRole,
+      // ADICIONE ESTA LINHA ABAIXO PARA ENVIAR O JWT DE FORMA EXPLÍCITA
+      Authorization: `Bearer ${serviceRole}`, 
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {})
     }
   });
+
+  if (!resposta.ok) {
+    const detalhe = await resposta.text();
+    const erro = new Error(`Falha ao consultar Supabase: HTTP ${resposta.status}`);
+    erro.code = "supabase_erro";
+    erro.status = resposta.status;
+    erro.detail = detalhe;
+    throw erro;
+  }
+
+  return resposta;
+}
 
   if (!resposta.ok) {
     const detalhe = await resposta.text();
