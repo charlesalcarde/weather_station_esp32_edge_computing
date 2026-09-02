@@ -74,7 +74,6 @@ async function supabaseFetch(endpoint, options = {}) {
     ...options,
     headers: {
       apikey: serviceRole,
-      Authorization: `Bearer ${serviceRole}`,
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {})
