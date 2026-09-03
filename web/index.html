@@ -80,7 +80,7 @@
 
         <div class="context-note">
           <span class="context-note-icon" aria-hidden="true">i</span>
-          <p><strong>Contexto da medição:</strong> a estação encontra-se atualmente em ambiente interno/isolado do meio externo. Portanto, estas leituras representam o microambiente onde o equipamento está instalado e não, necessariamente, as condições meteorológicas externas de Campinas.</p>
+          <p><strong>Contexto da medição:</strong> a estação encontra-se atualmente em ambiente interno/isolado do meio externo. Portanto, estas leituras representam o microambiente onde o equipamento está instalado e não, necessariamente, as condições meteorológicas externas de <strong id="context-city">localização configurada</strong>.</p>
         </div>
 
         <div class="data-legend" aria-label="Origem das informações">
@@ -107,9 +107,15 @@
             <p class="section-note">A estação mede o seu ambiente local. A Open-Meteo fornece uma referência meteorológica externa para a localização configurada. <span id="comparacao-periodo-info">Comparação estatística: 24 h.</span></p>
           </div>
           <div class="source-comparison" aria-label="Fontes comparadas">
-            <div><span>Local</span><strong>ESP32 + sensores</strong></div>
-            <span class="versus">×</span>
-            <div><span>Externo</span><strong>Open-Meteo</strong></div>
+            <div class="source-card source-local">
+              <span>Local</span>
+              <div class="source-card-value">
+                <strong>ESP32 + sensores</strong>
+                <button class="info-icon info-action source-info" type="button" data-info="hardware-estacao" aria-label="Conheça o hardware da estação">i</button>
+              </div>
+            </div>
+            <span class="versus" aria-hidden="true">×</span>
+            <div class="source-card source-external"><span>Externo</span><strong>Open-Meteo</strong></div>
           </div>
         </div>
         <div id="cards-comparacao" class="comparison-grid"></div>
