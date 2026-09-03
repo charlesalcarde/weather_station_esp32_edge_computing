@@ -10,6 +10,7 @@ const INTERVALO_HISTORICO_MS = 5 * 60 * 1000;
 let segundosParaAtualizar = INTERVALO_AGORA_S;
 let atualizandoAgora = false;
 let atualizandoHistorico = false;
+let cidadeReferenciaAtual = "localização configurada";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -39,7 +40,7 @@ const INFO = {
     title: "O que estas condições representam?",
     body: `
       <p>Estas informações descrevem o <strong>microambiente onde a estação está fisicamente instalada</strong>.</p>
-      <p>Atualmente, o equipamento encontra-se em ambiente interno/isolado do meio externo. Assim, os valores locais não devem ser interpretados automaticamente como a condição meteorológica externa de Campinas.</p>
+      <p>Atualmente, o equipamento encontra-se em ambiente interno/isolado do meio externo. Assim, os valores locais não devem ser interpretados automaticamente como a condição meteorológica externa de <strong>{{cidade}}</strong>.</p>
       <p>A comparação com a Open-Meteo existe justamente para distinguir a medição local da referência meteorológica externa.</p>
     `
   },
@@ -87,6 +88,28 @@ const INFO = {
     eyebrow: "Conectividade",
     title: "RSSI",
     body: `<p>Indicador da intensidade do sinal Wi-Fi recebido pelo ESP32, medido em dBm. Valores menos negativos representam, em geral, sinal mais forte. Ele descreve a conectividade e não a condição ambiental.</p>`
+  },
+  "hardware-estacao": {
+    eyebrow: "Hardware",
+    title: "Conheça o hardware da estação",
+    body: `
+      <p>A estação combina um <strong>ESP32</strong> com dois sensores ambientais. O ESP32 é o núcleo de processamento Edge: recebe as leituras, executa cálculos e mantém a operação local antes de qualquer envio para a Cloud.</p>
+      <div class="hardware-grid">
+        <article class="hardware-card">
+          <div class="hardware-image-wrap"><img src="/hardware/esp32.png" alt="Placa ESP32 utilizada como núcleo de processamento da estação" loading="lazy"></div>
+          <div><h3>ESP32</h3><p>Microcontrolador que funciona como o <strong>nó Edge</strong> da estação. Faz aquisição dos sensores, médias, tendências, conversões, classificação de estados, conectividade e servidor Web local.</p></div>
+        </article>
+        <article class="hardware-card">
+          <div class="hardware-image-wrap"><img src="/hardware/bmp180.png" alt="Módulo sensor BMP180" loading="lazy"></div>
+          <div><h3>BMP180</h3><p>Sensor barométrico utilizado para <strong>pressão atmosférica</strong> e para a temperatura principal da arquitetura Cloud. Comunica-se com o ESP32 pelo barramento I²C.</p></div>
+        </article>
+        <article class="hardware-card">
+          <div class="hardware-image-wrap"><img src="/hardware/dht11.png" alt="Módulo sensor DHT11" loading="lazy"></div>
+          <div><h3>DHT11</h3><p>Sensor utilizado para medir a <strong>umidade relativa do ar</strong>. Também fornece temperatura auxiliar, mas a temperatura canônica enviada à Cloud permanece a do BMP180.</p></div>
+        </article>
+      </div>
+      <div class="modal-highlight"><strong>Fluxo local:</strong> sensores → ESP32 → processamento Edge → dashboard local / telemetria Cloud.</div>
+    `
   },
   "open-meteo": {
     eyebrow: "Fonte externa",
@@ -149,7 +172,7 @@ function abrirInfo(chave) {
   if (!info) return;
   $("#info-modal-eyebrow").textContent = info.eyebrow || "Informação";
   $("#info-modal-title").textContent = info.title;
-  $("#info-modal-body").innerHTML = info.body;
+  $("#info-modal-body").innerHTML = info.body.replaceAll("{{cidade}}", cidadeReferenciaAtual);
   $("#info-modal").classList.remove("hidden");
   document.body.classList.add("modal-open");
   $("#info-modal-close").focus();
@@ -188,8 +211,24 @@ function card(rotulo, valor) {
   </article>`;
 }
 
+function obterCidadeReferencia(local) {
+  if (!local || typeof local !== "string") return "localização configurada";
+  const texto = local.trim();
+  if (!texto) return "localização configurada";
+  if (texto.includes(" - ")) return texto.split(" - ")[0].trim() || texto;
+  if (texto.includes(",")) return texto.split(",")[0].trim() || texto;
+  return texto;
+}
+
+function atualizarCidadeReferencia(local) {
+  cidadeReferenciaAtual = obterCidadeReferencia(local);
+  const el = $("#context-city");
+  if (el) el.textContent = cidadeReferenciaAtual;
+}
+
 function renderIdentidade(d) {
   const local = d.externo?.local || "—";
+  atualizarCidadeReferencia(d.externo?.local);
   $("#station-code").textContent = d.estacao || "—";
   $("#station-name").textContent = d.nome_estacao || "—";
   $("#station-location").textContent = local;
