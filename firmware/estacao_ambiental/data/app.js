@@ -82,8 +82,6 @@ function aplicarTema(tema){
     temaAtual
   );
 
-  // As cores das linhas são definidas no Canvas;
-  // redesenhamos para adaptar grade e textos ao novo tema.
   desenharGraficos();
 }
 
@@ -202,16 +200,85 @@ function descricaoTempo(codigo,isDay){
 }
 
 // ==========================================================
+// APRESENTAÇÃO DE TEXTOS DO FIRMWARE
+//
+// IMPORTANTE:
+// Os códigos internos NÃO são modificados.
+//
+// Exemplos:
+// ESTAVEL     -> ESTÁVEL
+// ATENCAO     -> ATENÇÃO
+// CONFORTAVEL -> CONFORTÁVEL
+//
+// Isso preserva o contrato Firmware -> Dashboard -> Cloud.
+// ==========================================================
+
+function textoApresentacao(valor){
+  if(valor===null||valor===undefined)return "";
+
+  const original=String(valor).trim();
+
+  const substituicoes=[
+    [/\bATENCAO\b/gi,"ATENÇÃO"],
+    [/\bESTAVEL\b/gi,"ESTÁVEL"],
+    [/\bINSTAVEL\b/gi,"INSTÁVEL"],
+    [/\bCONFORTAVEL\b/gi,"CONFORTÁVEL"],
+    [/\bDESCONFORTAVEL\b/gi,"DESCONFORTÁVEL"],
+    [/\bACEITAVEL\b/gi,"ACEITÁVEL"],
+    [/\bPRESSAO\b/gi,"PRESSÃO"],
+    [/\bCONDICAO\b/gi,"CONDIÇÃO"],
+    [/\bTENDENCIA\b/gi,"TENDÊNCIA"],
+    [/\bMAXIMA\b/gi,"MÁXIMA"],
+    [/\bMINIMA\b/gi,"MÍNIMA"],
+    [/\bUMIDO\b/gi,"ÚMIDO"],
+    [/\bUMIDA\b/gi,"ÚMIDA"],
+    [/\bCRITICO\b/gi,"CRÍTICO"],
+    [/\bCRITICA\b/gi,"CRÍTICA"],
+    [/\bANOMALO\b/gi,"ANÔMALO"],
+    [/\bANOMALA\b/gi,"ANÔMALA"]
+  ];
+
+  let texto=original;
+
+  substituicoes.forEach(([padrao,correcao])=>{
+    texto=texto.replace(padrao,correcao);
+  });
+
+  // Melhora também a representação das transições.
+  // Exemplo:
+  // ESTAVEL -> ATENCAO
+  // ESTÁVEL → ATENÇÃO
+  texto=texto.replace(/\s*->\s*/g," → ");
+
+  return texto;
+}
+
+// ==========================================================
 // ESTADO AMBIENTAL
 // ==========================================================
 
 function aplicarEstado(elemento,texto,tipo){
-  elemento.textContent=texto||"--";
-  elemento.classList.remove("good","warn","bad","neutral");
+
+  // A tradução ocorre somente neste ponto de apresentação.
+  elemento.textContent=
+    textoApresentacao(texto)||"--";
+
+  elemento.classList.remove(
+    "good",
+    "warn",
+    "bad",
+    "neutral"
+  );
+
   elemento.classList.add(tipo);
 }
 
 function desenharEstado(){
+
+  // IMPORTANTE:
+  // As comparações continuam utilizando os códigos originais.
+  // Portanto nenhuma lógica Edge é alterada.
+
   let geralTipo=
     dados.estadoGeral==="ESTAVEL"
     ? "good"
@@ -309,7 +376,11 @@ function desenharAlertas(){
     if(texto){
       const item=document.createElement("div");
       item.className="alert-chip";
-      item.textContent=texto;
+
+      // Corrige somente a apresentação.
+      item.textContent=
+        textoApresentacao(texto);
+
       box.appendChild(item);
     }
   }
@@ -550,12 +621,26 @@ function desenharEventos(){
 
     const tipo=document.createElement("div");
     tipo.className="event-type";
-    tipo.textContent=evento.tipo;
+
+    // Ex.: PRESSAO -> PRESSÃO
+    tipo.textContent=
+      textoApresentacao(evento.tipo);
 
     const mensagem=document.createElement("div");
-    mensagem.textContent=evento.mensagem;
 
-    row.append(hora,tipo,mensagem);
+    // Ex.:
+    // "Condicao geral: ESTAVEL -> ATENCAO"
+    // torna-se:
+    // "Condição geral: ESTÁVEL → ATENÇÃO"
+    mensagem.textContent=
+      textoApresentacao(evento.mensagem);
+
+    row.append(
+      hora,
+      tipo,
+      mensagem
+    );
+
     box.appendChild(row);
   });
 }
@@ -699,6 +784,7 @@ function desenharGrafico(
     escuro
     ? "#8fa3af"
     : "#82919c";
+
   ctx.lineWidth=1;
   ctx.font="11px Arial";
 
@@ -762,6 +848,7 @@ function desenharGrafico(
 
   series.forEach(s=>{
     ctx.strokeStyle=s.cor;
+
     ctx.lineWidth=
       s.tracejado
       ? 2.4
@@ -1107,6 +1194,9 @@ $("modalOverlay").onclick=
       fecharInfo();
   };
 
+// ==========================================================
+// CONFIGURAÇÕES
+// ==========================================================
 
 function abrirConfiguracoes(aba="identidade"){
   $("settingsOverlay").classList.add("open");
@@ -1122,23 +1212,46 @@ function fecharConfiguracoes(){
 
 function selecionarAbaConfiguracoes(aba){
   document.querySelectorAll(".settings-tab").forEach(btn=>{
-    btn.classList.toggle("active",btn.dataset.settingsTab===aba);
+    btn.classList.toggle(
+      "active",
+      btn.dataset.settingsTab===aba
+    );
   });
+
   document.querySelectorAll(".settings-section").forEach(sec=>{
-    sec.classList.toggle("active",sec.id==="settings-"+aba);
+    sec.classList.toggle(
+      "active",
+      sec.id==="settings-"+aba
+    );
   });
 }
 
 async function carregarIdentidade(){
   try{
-    const r=await fetch("/identidade",{cache:"no-store"});
+    const r=await fetch(
+      "/identidade",
+      {cache:"no-store"}
+    );
+
     if(!r.ok)return;
+
     identidade=await r.json();
-    $("nomeEstacaoInput").value=identidade.nomeEstacao||"Estacao Ambiental";
-    $("hostnameInput").value=identidade.hostname||"estacao";
-    $("hostnamePreview").textContent=identidade.enderecoLocal||"http://estacao.local";
+
+    $("nomeEstacaoInput").value=
+      identidade.nomeEstacao||
+      "Estacao Ambiental";
+
+    $("hostnameInput").value=
+      identidade.hostname||
+      "estacao";
+
+    $("hostnamePreview").textContent=
+      identidade.enderecoLocal||
+      "http://estacao.local";
+
   }catch(e){
-    $("statusIdentidade").textContent="Falha ao carregar identidade.";
+    $("statusIdentidade").textContent=
+      "Falha ao carregar identidade.";
   }
 }
 
@@ -1147,61 +1260,143 @@ function hostnameClienteValido(host){
 }
 
 async function salvarIdentidadeUI(){
-  const nome=$("nomeEstacaoInput").value.trim();
-  const host=$("hostnameInput").value.trim().toLowerCase();
+  const nome=
+    $("nomeEstacaoInput")
+      .value
+      .trim();
+
+  const host=
+    $("hostnameInput")
+      .value
+      .trim()
+      .toLowerCase();
 
   if(!nome){
-    $("statusIdentidade").textContent="Informe um nome para a estação.";
+    $("statusIdentidade").textContent=
+      "Informe um nome para a estação.";
     return;
   }
 
   if(!hostnameClienteValido(host)){
-    $("statusIdentidade").textContent="Hostname inválido. Use letras minúsculas, números e hífen, sem espaços ou acentos.";
+    $("statusIdentidade").textContent=
+      "Hostname inválido. Use letras minúsculas, números e hífen, sem espaços ou acentos.";
     return;
   }
 
-  $("statusIdentidade").textContent="Salvando...";
+  $("statusIdentidade").textContent=
+    "Salvando...";
 
   try{
-    const r=await fetch("/salvarIdentidade",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({nomeEstacao:nome,hostname:host})
-    });
+    const r=
+      await fetch(
+        "/salvarIdentidade",
+        {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json"
+          },
+          body:JSON.stringify({
+            nomeEstacao:nome,
+            hostname:host
+          })
+        }
+      );
+
     const obj=await r.json();
-    if(!r.ok)throw new Error(obj.erro||"Falha ao salvar identidade");
+
+    if(!r.ok)
+      throw new Error(
+        obj.erro||
+        "Falha ao salvar identidade"
+      );
+
     identidade=obj;
-    $("hostnamePreview").textContent=obj.enderecoLocal;
-    $("statusIdentidade").textContent="Identidade salva. Acesso local: "+obj.enderecoLocal;
+
+    $("hostnamePreview").textContent=
+      obj.enderecoLocal;
+
+    $("statusIdentidade").textContent=
+      "Identidade salva. Acesso local: "+
+      obj.enderecoLocal;
+
   }catch(e){
-    $("statusIdentidade").textContent="Falha: "+e.message;
+    $("statusIdentidade").textContent=
+      "Falha: "+e.message;
   }
 }
 
 function atualizarResumoConfiguracoes(){
   if($("cfgLocalResumo")){
-    const local=externo.local||"--";
-    const alt=dados.altitude!==undefined?Number(dados.altitude).toFixed(1)+" m":"--";
-    $("cfgLocalResumo").innerHTML="<strong>Local atual:</strong> "+local+
-      "<br><span class='coords'>Altitude: "+alt+
-      " • Origem: "+(dados.origemAltitude||"--")+"</span>";
+    const local=
+      externo.local||"--";
+
+    const alt=
+      dados.altitude!==undefined
+      ? Number(dados.altitude).toFixed(1)+" m"
+      : "--";
+
+    $("cfgLocalResumo").innerHTML=
+      "<strong>Local atual:</strong> "+
+      local+
+      "<br><span class='coords'>Altitude: "+
+      alt+
+      " • Origem: "+
+      (dados.origemAltitude||"--")+
+      "</span>";
   }
 }
 
-$("btnConfiguracoes").onclick=()=>abrirConfiguracoes();
-$("settingsClose").onclick=fecharConfiguracoes;
-$("settingsOverlay").onclick=e=>{if(e.target===$("settingsOverlay"))fecharConfiguracoes();};
-document.querySelectorAll(".settings-tab").forEach(btn=>{
-  btn.onclick=()=>selecionarAbaConfiguracoes(btn.dataset.settingsTab);
-});
-$("hostnameInput").addEventListener("input",()=>{
-  const host=$("hostnameInput").value.trim().toLowerCase();
-  $("hostnamePreview").textContent="http://"+(host||"estacao")+".local";
-});
-$("btnSalvarIdentidade").onclick=salvarIdentidadeUI;
-$("btnAbrirWiFiAvancado").onclick=()=>{fecharConfiguracoes();abrirWiFi();};
-$("btnAbrirLocalAvancado").onclick=()=>{fecharConfiguracoes();abrirConfig();};
+$("btnConfiguracoes").onclick=
+  ()=>abrirConfiguracoes();
 
+$("settingsClose").onclick=
+  fecharConfiguracoes;
+
+$("settingsOverlay").onclick=
+  e=>{
+    if(e.target===$("settingsOverlay"))
+      fecharConfiguracoes();
+  };
+
+document
+  .querySelectorAll(".settings-tab")
+  .forEach(btn=>{
+    btn.onclick=
+      ()=>selecionarAbaConfiguracoes(
+        btn.dataset.settingsTab
+      );
+  });
+
+$("hostnameInput").addEventListener(
+  "input",
+  ()=>{
+    const host=
+      $("hostnameInput")
+        .value
+        .trim()
+        .toLowerCase();
+
+    $("hostnamePreview").textContent=
+      "http://"+
+      (host||"estacao")+
+      ".local";
+  }
+);
+
+$("btnSalvarIdentidade").onclick=
+  salvarIdentidadeUI;
+
+$("btnAbrirWiFiAvancado").onclick=
+  ()=>{
+    fecharConfiguracoes();
+    abrirWiFi();
+  };
+
+$("btnAbrirLocalAvancado").onclick=
+  ()=>{
+    fecharConfiguracoes();
+    abrirConfig();
+  };
 
 // ==========================================================
 // CONFIGURAÇÃO DE LOCAL
@@ -1256,7 +1451,6 @@ function fecharConfig(){
     .classList
     .remove("open");
 }
-
 
 $("configClose").onclick=
   fecharConfig;
@@ -1357,7 +1551,9 @@ async function buscarCidade(){
         Number(local.lon).toFixed(5)+
         (
           local.elevation!==undefined
-          ? " • elevação aproximada "+Number(local.elevation).toFixed(0)+" m"
+          ? " • elevação aproximada "+
+            Number(local.elevation).toFixed(0)+
+            " m"
           : ""
         );
 
@@ -1368,8 +1564,7 @@ async function buscarCidade(){
 
       btn.addEventListener(
         "click",
-        ()=>
-          salvarLocal(local)
+        ()=>salvarLocal(local)
       );
 
       $("resultadosCidade")
@@ -1394,7 +1589,11 @@ async function salvarLocal(local){
       pais:local.pais||"",
       lat:String(local.lat),
       lon:String(local.lon),
-      elevation:String(local.elevation!==undefined?local.elevation:"")
+      elevation:String(
+        local.elevation!==undefined
+        ? local.elevation
+        : ""
+      )
     });
 
   try{
@@ -1442,7 +1641,6 @@ $("campoCidade")
         buscarCidade();
     }
   );
-
 
 // ==========================================================
 // ALTITUDE DA ESTAÇÃO
@@ -1493,11 +1691,13 @@ async function salvarAltitudeManual(){
       Number(obj.altitude).toFixed(1)+" m";
 
     $("origemAltitudeConfig").textContent=
-      "Origem: "+obj.origemAltitude;
+      "Origem: "+
+      obj.origemAltitude;
 
   }catch(e){
     $("statusAltitude").textContent=
-      "Falha: "+e.message;
+      "Falha: "+
+      e.message;
   }
 }
 
@@ -1533,11 +1733,13 @@ async function usarAltitudeAutomatica(){
       Number(obj.altitude).toFixed(1)+" m";
 
     $("origemAltitudeConfig").textContent=
-      "Origem: "+obj.origemAltitude;
+      "Origem: "+
+      obj.origemAltitude;
 
   }catch(e){
     $("statusAltitude").textContent=
-      "Falha: "+e.message;
+      "Falha: "+
+      e.message;
   }
 }
 
@@ -1814,15 +2016,44 @@ function atualizarInterfaceWiFi(){
     : "--";
 
   if($("cfgWifiEstado")){
-    $("cfgWifiEstado").textContent=conectado?"Conectado":"Sem rede";
-    $("cfgWifiSSID").textContent=conectado?(wifiStatus.ssidAtual||"--"):"--";
-    $("cfgWifiIP").textContent=conectado?(wifiStatus.ip||"--"):"--";
-    $("cfgWifiRSSI").textContent=conectado?wifiStatus.rssi+" dBm • "+rssiDescricao(wifiStatus.rssi):"--";
+    $("cfgWifiEstado").textContent=
+      conectado
+      ? "Conectado"
+      : "Sem rede";
+
+    $("cfgWifiSSID").textContent=
+      conectado
+      ? (wifiStatus.ssidAtual||"--")
+      : "--";
+
+    $("cfgWifiIP").textContent=
+      conectado
+      ? (wifiStatus.ip||"--")
+      : "--";
+
+    $("cfgWifiRSSI").textContent=
+      conectado
+      ? wifiStatus.rssi+
+        " dBm • "+
+        rssiDescricao(
+          wifiStatus.rssi
+        )
+      : "--";
+
     if(wifiStatus.apAtivo){
-      $("cfgWifiAP").classList.remove("hidden");
-      $("cfgWifiAP").textContent="Modo de recuperação ativo • "+wifiStatus.apSSID+" • "+wifiStatus.apIP;
+      $("cfgWifiAP").classList.remove(
+        "hidden"
+      );
+
+      $("cfgWifiAP").textContent=
+        "Modo de recuperação ativo • "+
+        wifiStatus.apSSID+
+        " • "+
+        wifiStatus.apIP;
     }else{
-      $("cfgWifiAP").classList.add("hidden");
+      $("cfgWifiAP").classList.add(
+        "hidden"
+      );
     }
   }
 
@@ -1947,6 +2178,7 @@ async function escanearWiFi(){
         );
 
       btn.type="button";
+
       btn.className=
         "wifi-network";
 
@@ -2124,6 +2356,7 @@ function iniciarPollingWiFi(){
         clearInterval(
           wifiPollTimer
         );
+
         wifiPollTimer=null;
       }
     },
@@ -2154,7 +2387,9 @@ async function esquecerWiFi(){
       );
 
     $("wifiSaveStatus").textContent=
-      "Todas as redes foram removidas. Conecte-se a EstacaoAmbiental-Setup para configurar uma nova rede.";
+      "Todas as redes foram removidas. "+
+      "Conecte-se a EstacaoAmbiental-Setup "+
+      "para configurar uma nova rede.";
 
     $("wifiSaveStatus").className=
       "wifi-save-status warn";
@@ -2170,7 +2405,6 @@ async function esquecerWiFi(){
       "wifi-save-status bad";
   }
 }
-
 
 $("btnBannerWiFi").onclick=
   abrirWiFi;
@@ -2233,7 +2467,12 @@ async function carregar(){
         fetch("/eventos",{cache:"no-store"})
       ]);
 
-    if(!rd.ok||!re.ok||!rh.ok||!rv.ok)
+    if(
+      !rd.ok||
+      !re.ok||
+      !rh.ok||
+      !rv.ok
+    )
       throw new Error(
         "Uma das rotas HTTP retornou erro."
       );
@@ -2265,8 +2504,15 @@ async function carregar(){
 
 $("btnC").onclick=()=>{
   unidadeTemp="C";
-  $("btnC").classList.add("active");
-  $("btnF").classList.remove("active");
+
+  $("btnC").classList.add(
+    "active"
+  );
+
+  $("btnF").classList.remove(
+    "active"
+  );
+
   desenharCards();
   desenharExterno();
   desenharGraficos();
@@ -2274,8 +2520,15 @@ $("btnC").onclick=()=>{
 
 $("btnF").onclick=()=>{
   unidadeTemp="F";
-  $("btnF").classList.add("active");
-  $("btnC").classList.remove("active");
+
+  $("btnF").classList.add(
+    "active"
+  );
+
+  $("btnC").classList.remove(
+    "active"
+  );
+
   desenharCards();
   desenharExterno();
   desenharGraficos();
@@ -2283,8 +2536,15 @@ $("btnF").onclick=()=>{
 
 $("btnHPA").onclick=()=>{
   unidadePressao="hPa";
-  $("btnHPA").classList.add("active");
-  $("btnATM").classList.remove("active");
+
+  $("btnHPA").classList.add(
+    "active"
+  );
+
+  $("btnATM").classList.remove(
+    "active"
+  );
+
   desenharCards();
   desenharExterno();
   desenharGraficos();
@@ -2292,8 +2552,15 @@ $("btnHPA").onclick=()=>{
 
 $("btnATM").onclick=()=>{
   unidadePressao="atm";
-  $("btnATM").classList.add("active");
-  $("btnHPA").classList.remove("active");
+
+  $("btnATM").classList.add(
+    "active"
+  );
+
+  $("btnHPA").classList.remove(
+    "active"
+  );
+
   desenharCards();
   desenharExterno();
   desenharGraficos();
@@ -2336,9 +2603,17 @@ $("btnLimparEventos").onclick=
 // START
 // ==========================================================
 
-ativarTooltip("grafTemp");
-ativarTooltip("grafPressao");
-ativarTooltip("grafUmidade");
+ativarTooltip(
+  "grafTemp"
+);
+
+ativarTooltip(
+  "grafPressao"
+);
+
+ativarTooltip(
+  "grafUmidade"
+);
 
 window.addEventListener(
   "resize",
