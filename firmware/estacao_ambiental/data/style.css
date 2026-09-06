@@ -620,3 +620,84 @@ html[data-theme="dark"] .identity-preview strong{color:#dbe6ed}
     height:36px;
   }
 }
+
+
+/* ==========================================================
+   v3.6 — CONTROLE DO HEARTBEAT LED
+   ========================================================== */
+
+.heartbeat-toggle{
+  white-space:nowrap;
+  padding:9px 11px;
+}
+
+.heartbeat-toggle:not(.off){
+  background:#eaf7ef;
+  color:#247345;
+}
+
+.heartbeat-toggle.off{
+  background:#edf1f4;
+  color:#718392;
+}
+
+.heartbeat-toggle:disabled{
+  opacity:.6;
+  cursor:wait;
+}
+
+
+/* ==========================================================
+   v3.6 — BARGRAPH DO SINAL NAS REDES WI-FI
+   ========================================================== */
+
+.wifi-strength{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.wifi-mini-signal{
+  display:inline-flex;
+  align-items:flex-end;
+  gap:2px;
+  height:16px;
+  min-width:28px;
+}
+
+.wifi-mini-bar{
+  display:inline-block;
+  width:4px;
+  background:#cbd5db;
+  border-radius:2px;
+}
+
+.wifi-mini-bar:nth-child(1){height:4px}
+.wifi-mini-bar:nth-child(2){height:7px}
+.wifi-mini-bar:nth-child(3){height:10px}
+.wifi-mini-bar:nth-child(4){height:13px}
+.wifi-mini-bar:nth-child(5){height:16px}
+
+.wifi-mini-bar.on{
+  background:#1769aa;
+}
+
+html[data-theme="dark"] .heartbeat-toggle:not(.off){
+  background:#173a2a;
+  color:#83d9a5;
+}
+
+html[data-theme="dark"] .heartbeat-toggle.off{
+  background:#24323a;
+  color:#9aabb5;
+}
+
+html[data-theme="dark"] .wifi-mini-bar{
+  background:#42535d;
+}
+
+html[data-theme="dark"] .wifi-mini-bar.on{
+  background:#4aa3e8;
+}
+
