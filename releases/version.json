@@ -1,4 +1,5 @@
 {
-  "version": "3.6.1",
-  "firmware": "estacao-ambiental.bin"
+  "version": "3.6.2",
+  "firmware": "estacao-ambiental.bin",
+  "url": "https://github.com/charlesalcarde/weather_station_esp32_edge_computing/releases/download/v3.6.2/estacao-ambiental.bin"
 }
