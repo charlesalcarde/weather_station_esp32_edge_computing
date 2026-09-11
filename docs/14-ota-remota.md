@@ -229,7 +229,7 @@ Posteriormente o projeto deverá migrar para publicação automatizada, autoriza
 Seja $B$ a sequência de bytes do firmware baixado. Calcula-se:
 
 $$
-H = \operatorname{SHA256}(B)
+H = \mathrm{SHA256}(B)
 $$
 
 O ESP32 compara:
