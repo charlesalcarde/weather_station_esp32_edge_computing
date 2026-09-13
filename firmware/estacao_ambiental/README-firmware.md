@@ -253,6 +253,6 @@ Roadmap completo: [`../docs/12-roadmap.md`](../docs/12-roadmap.md).
 | [`10-operacao.md`](../docs/10-operacao.md) | operação e diagnóstico |
 | [`11-processamento-edge.md`](../docs/11-processamento-edge.md) | processamento no Edge |
 | [`12-roadmap.md`](../docs/12-roadmap.md) | evolução planejada |
-| [`ota-remota.md`](../docs/ota-remota.md) | OTA HTTPS, SHA-256 e segurança |
+| [`14-ota-remota.md`](../docs/14-ota-remota.md) | OTA HTTPS, SHA-256 e segurança |
 
 O [`README.md` principal](../README.md) permanece como porta de entrada do projeto.
