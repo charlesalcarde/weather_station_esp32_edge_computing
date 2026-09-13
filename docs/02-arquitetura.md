@@ -5,8 +5,9 @@ ESP32**, apresentando seus componentes, responsabilidades, fluxos de
 dados e a divisão entre processamento local em borda e serviços
 externos.
 
-> Documento referente à arquitetura consolidada na fase **v3.4-RC1** do
-> projeto.
+> Documento de referência da arquitetura consolidada da plataforma 
+>Estação Ambiental ESP32. Estado da arquitetura documentado a partir
+> da versão de firmware v3.6.7.
 
 ------------------------------------------------------------------------
 
@@ -29,7 +30,7 @@ externos.
     -   [5.1 Fluxo local](#51-fluxo-local)
     -   [5.2 Fluxo meteorológico
         externo](#52-fluxo-meteorológico-externo)
-    -   [5.3 Fluxo Edge--Cloud](#53-fluxo-edgecloud)
+    -   [5.3 Fluxo Edge--Cloud](#53-fluxo-edge--cloud)
 -   [6. Responsabilidades do ESP32](#6-responsabilidades-do-esp32)
 -   [7. Processamento de borda](#7-processamento-de-borda)
 -   [8. Dashboard local e LittleFS](#8-dashboard-local-e-littlefs)
