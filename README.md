@@ -70,7 +70,11 @@ A diretriz arquitetural do projeto é:
 
 > **Edge primeiro; Cloud como extensão.**
 
+Documentação detalhada: [`docs/01-visao-geral.md`](docs/01-visao-geral.md).
+
 ---
+
+
 
 ## 2. Objetivos do projeto
 
