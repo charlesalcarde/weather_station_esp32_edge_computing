@@ -4,7 +4,7 @@ Estação ambiental experimental baseada em ESP32 desenvolvida como plataforma d
 
 O sistema realiza aquisição de dados ambientais, processamento local, análise temporal, classificação das condições ambientais, detecção de eventos, visualização por dashboard Web local, telemetria Cloud, dashboard remoto e atualização de firmware OTA pela rede local e pela Internet.
 
-> **Estado da plataforma documentado a partir do firmware v3.6.7.**
+> **Referência arquitetural:** firmware v3.6.7. **Avaliação experimental:** instrumentações EXP01b–EXP04b.2; os resultados e a configuração de cada ensaio são documentados separadamente em [`docs/metricas/`](docs/metricas/README.md).
 
 ---
 
@@ -29,6 +29,7 @@ O sistema realiza aquisição de dados ambientais, processamento local, análise
 - [11. Particionamento da Flash](#11-particionamento-da-flash)
 - [12. Estrutura do repositório](#12-estrutura-do-repositório)
 - [13. Documentação](#13-documentação)
+  - [13.1 Avaliação experimental e métricas](#131-avaliação-experimental-e-métricas)
 - [14. Tecnologias utilizadas](#14-tecnologias-utilizadas)
 - [15. Instalação e publicação](#15-instalação-e-publicação)
 - [16. Operação](#16-operação)
@@ -36,6 +37,7 @@ O sistema realiza aquisição de dados ambientais, processamento local, análise
 - [18. Estado atual](#18-estado-atual)
 - [19. Roadmap](#19-roadmap)
 - [20. Contexto acadêmico](#20-contexto-acadêmico)
+  - [20.1 Metodologia de avaliação](#201-metodologia-de-avaliação)
 - [21. Licença](#21-licença)
 
 ---
@@ -353,7 +355,7 @@ registros por estação, em operação contínua.
 
 A indisponibilidade temporária da Cloud não deve interromper o processamento local.
 
-Uma evolução prevista é implementar **buffer local e reenvio posterior**, evitando perda de telemetria durante falhas temporárias de conectividade.
+Na instrumentação experimental **EXP04b.2**, foi implementado e testado um buffer persistente no LittleFS, com reenvio automático após a reconexão. O teste prolongado demonstrou recuperação dos registros armazenados, mas também perdas quando a capacidade disponível foi atingida. A autonomia definitiva, a compactação e a política de descarte permanecem em estudo. Consulte [`docs/metricas/README.md`](docs/metricas/README.md).
 
 Documentação detalhada: [`docs/07-cloud.md`](docs/07-cloud.md).
 
@@ -450,7 +452,7 @@ Também estão previstos:
 - atualização OTA do LittleFS;
 - automação de build e Release por CI/CD.
 
-Documentação detalhada: [`docs/ota-remota.md`](docs/ota-remota.md).
+Documentação detalhada: [`docs/14-ota-remota.md`](docs/14-ota-remota.md).
 
 ---
 
@@ -541,11 +543,19 @@ estacao-ambiental-esp32/
 │   ├── 06-conectividade.md
 │   ├── 07-cloud.md
 │   ├── 08-particionamento-flash.md
-│   ├── 09-instalacao.md
+│   ├── 09-processamento-edge.md
 │   ├── 10-operacao.md
 │   ├── 11-processamento-edge.md
 │   ├── 12-roadmap.md
-│   └── ota-remota.md
+│   ├── 13-incidente-supabase-401-jwt.md
+│   ├── 14-ota-remota.md
+│   └── metricas/
+│       ├── README.md
+│       ├── 01-latencia.md
+│       ├── 02-recursos-computacionais.md
+│       ├── 03-comunicacao.md
+│       ├── 04-resiliencia.md
+│       └── 05-transformacao-dados.md
 │
 ├── assets/
 ├── research/
@@ -571,11 +581,31 @@ A documentação técnica detalhada está organizada em `docs/`.
 | [`06-conectividade.md`](docs/06-conectividade.md) | Wi-Fi, NVS, AP e mDNS |
 | [`07-cloud.md`](docs/07-cloud.md) | Supabase, PostgreSQL e telemetria |
 | [`08-particionamento-flash.md`](docs/08-particionamento-flash.md) | Flash, APP0/APP1, OTA e LittleFS |
-| [`09-instalacao.md`](docs/09-instalacao.md) | instalação e configuração |
+| [`09-processamento-edge.md`](docs/09-processamento-edge.md) | processamento Edge (documento existente) |
 | [`10-operacao.md`](docs/10-operacao.md) | operação e diagnóstico |
 | [`11-processamento-edge.md`](docs/11-processamento-edge.md) | processamento matemático e Edge Computing |
 | [`12-roadmap.md`](docs/12-roadmap.md) | evolução planejada |
-| [`ota-remota.md`](docs/ota-remota.md) | arquitetura, segurança e ciclo de atualização OTA remota |
+| [`13-incidente-supabase-401-jwt.md`](docs/13-incidente-supabase-401-jwt.md) | registro de incidente Supabase |
+| [`14-ota-remota.md`](docs/14-ota-remota.md) | arquitetura, segurança e ciclo de atualização OTA remota |
+
+
+### 13.1 Avaliação experimental e métricas
+
+A avaliação quantitativa da arquitetura **Edge → Cloud** está organizada em um módulo documental próprio, com metodologia compartilhada e relatórios específicos por métrica.
+
+**Documento de entrada:** [`docs/metricas/README.md`](docs/metricas/README.md).
+
+| Métrica | Objeto de avaliação | Documento previsto |
+|---|---|---|
+| **M1 — Latência** | aquisição, processamento local e operação HTTPS; distinção entre latência de comunicação e ponta a ponta | [`01-latencia.md`](docs/metricas/01-latencia.md) |
+| **M2 — Recursos computacionais** | tempo de CPU por rotina, Flash, RAM/heap e viabilidade no ESP32 | [`02-recursos-computacionais.md`](docs/metricas/02-recursos-computacionais.md) |
+| **M3 — Comunicação** | payload JSON, volume de dados, frequência de envio e respostas HTTP | [`03-comunicacao.md`](docs/metricas/03-comunicacao.md) |
+| **M4 — Resiliência** | continuidade do Edge, persistência LittleFS, perdas e recuperação após falhas | [`04-resiliencia.md`](docs/metricas/04-resiliencia.md) |
+| **M5 — Transformação dos dados** | enriquecimento das leituras, indicadores derivados e potencial de transmissão seletiva | [`05-transformacao-dados.md`](docs/metricas/05-transformacao-dados.md) |
+
+Os cinco relatórios serão publicados progressivamente. Até sua criação, os respectivos links funcionam como indicação da estrutura planejada.
+
+As instrumentações **EXP01b**, **EXP02a**, **EXP03a**, **EXP04a**, **EXP04b.1** e **EXP04b.2** já forneceram observações experimentais. A implementação atual do buffer persistente é uma **linha de base experimental**, não uma arquitetura definitiva: autonomia-alvo, compactação, descarte de registros e proteção contra duplicidades ainda dependem de decisões e testes adicionais.
 
 ---
 
@@ -789,8 +819,8 @@ A plataforma já ultrapassou a fase em que Cloud, dashboard remoto e OTA eram ap
 - validação TLS adequada;
 - autenticação/proteção do ArduinoOTA local;
 - OTA independente do LittleFS;
-- tolerância a falhas Edge--Cloud;
-- fila local e reenvio de telemetria;
+- ampliação da tolerância a falhas Edge--Cloud;
+- evolução do buffer persistente experimental: dimensionamento, compactação, descarte e reenvio;
 - prevenção de duplicidades;
 - histórico ambiental de longo prazo;
 - análise de sazonalidade;
@@ -869,6 +899,15 @@ Nó Edge atualizado
 ```
 
 Essa característica transforma a estação em mais do que um dispositivo IoT de telemetria: ela constitui uma **plataforma experimental de processamento distribuído e gerenciamento do ciclo de vida de um nó Edge**.
+
+
+### 20.1 Metodologia de avaliação
+
+A pergunta orientadora da avaliação é: **em que medida o processamento local em um ESP32 contribui para a capacidade de resposta, a viabilidade computacional, o comportamento da comunicação, a continuidade operacional e a transformação dos dados em uma arquitetura Edge → Cloud?**
+
+Os resultados serão apresentados com distinção explícita entre valores **medidos**, **calculados**, **estimados**, **projetados** e **não verificados**. A comparação entre processamento Edge e operação HTTPS não será interpretada como comparação direta de algoritmos equivalentes executados em Edge e Cloud.
+
+O protocolo experimental, a identificação dos ensaios e as limitações de interpretação encontram-se em [`docs/metricas/README.md`](docs/metricas/README.md).
 
 ---
 
