@@ -87,29 +87,29 @@ O experimento **EXP03a instrumenta especificamente o payload do POST de telemetr
 
 Seja `B_i` o número de bytes do JSON serializado na tentativa `i`, e `N` o número de tentativas efetivamente iniciadas:
 
-\[
+$$
 B_{\mathrm{tentado}}=\sum_{i=1}^{N}B_i
-\]
+$$
 
 Para um subconjunto `S` de tentativas cujo código HTTP foi classificado como sucesso:
 
-\[
+$$
 B_{\mathrm{sucesso}}=\sum_{i\in S}B_i
-\]
+$$
 
 A taxa média de payload tentado, em bytes por minuto, é calculada por:
 
-\[
+$$
 R_{\mathrm{payload}}=\frac{B_{\mathrm{tentado}}\times 60000}{t_{\mathrm{última\ consulta}}-t_{\mathrm{primeira\ tentativa}}}
-\]
+$$
 
 Os instantes são expressos em milissegundos. No firmware, o cálculo é efetuado com `millis()` e o intervalo se inicia na **primeira tentativa de POST**, evitando incluir o tempo anterior à primeira transmissão.
 
 A taxa de sucesso observada pode ser definida como:
 
-\[
+$$
 P_{\mathrm{sucesso}}=\frac{N_{\mathrm{sucessos}}}{N_{\mathrm{tentativas}}}\times100\%
-\]
+$$
 
 Esse percentual caracteriza **respostas da operação HTTP na execução observada**, não disponibilidade contratual do serviço nem garantia de persistência sem duplicidades.
 
@@ -191,9 +191,9 @@ Em uma execução experimental registrada após **61 tentativas**, foram observa
 
 A média aritmética aproximada do payload tentado nessa janela é:
 
-\[
+$$
 \bar B \approx \frac{114{,}31\times1024}{61}\approx1.919\ \mathrm{bytes/tentativa}
-\]
+$$
 
 O resultado de aproximadamente **1,9 kB por leitura** é compatível com o último payload de 1.926 bytes, mas os dois valores não são idênticos e não devem ser tratados como se fossem a mesma medida.
 
