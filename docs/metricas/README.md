@@ -3,7 +3,7 @@
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 > **Escopo:** metodologia e organização das cinco métricas da Estação Ambiental ESP32. Este documento complementa o [README principal](../../README.md) e não substitui os relatórios individuais.
 
-> **Estado:** documentação experimental em evolução; decisões de autonomia e compactação do buffer ainda abertas.
+> **Estado:** documentação experimental em evolução; meta experimental de 12 horas definida; EXP04c.3c.1 auditada e EXP04c.3c.2 em validação. A homologação permanece pendente.
 
 ---
 
@@ -26,6 +26,7 @@
 - [9. Estrutura dos documentos](#9-estrutura-dos-documentos)
 - [10. Reprodutibilidade e evolução](#10-reprodutibilidade-e-evolução)
 - [11. Referências técnicas iniciais](#11-referências-técnicas-iniciais)
+- [12. Atualização experimental EXP04c e decisões arquiteturais](#12-atualização-experimental-exp04c-e-decisões-arquiteturais)
 
 ---
 
@@ -143,6 +144,8 @@ A identificação dos experimentos segue a nomenclatura efetivamente usada no fi
 | `EXP04a` | Resiliência sem buffer durante Wi-Fi OFF | Testado |
 | `EXP04b.1` | Diagnóstico de capacidade do LittleFS | Testado |
 | `EXP04b.2` | Buffer persistente e reenvio automático | Testes funcionais e prolongados realizados; melhorias em aberto |
+| `EXP04c.3c.1` | Compactação, PACK, buffer de 300 registros e replay misto | Ensaio prolongado e auditoria SQL realizados; perdas identificadas |
+| `EXP04c.3c.2` | Correção de cadência, fallback e instrumentação | Ensaio curto iniciado; resultados finais ainda pendentes |
 | `EXP05` | Avaliação sistemática da transformação dos dados | A desenvolver/complementar |
 
 A nomenclatura acima não implica que todas as métricas estejam concluídas em sua totalidade.
@@ -171,7 +174,7 @@ As primeiras instrumentações indicaram processamento local da ordem de centena
 
 Na avaliação de resiliência, a implementação `EXP04b.2` demonstrou gravação local durante a indisponibilidade do Wi-Fi, reconhecimento de registros após reinicialização e reenvio automático. Em um teste prolongado, observou-se uma fila com 119 registros pendentes, seguida de limitação de espaço e perdas de novas leituras. O relatório final do firmware indicou fila esvaziada, 34 leituras não armazenadas e uma falha de tentativa de reenvio. Os contadores possuem escopos próprios e não devem ser combinados sem verificar suas definições.
 
-**Decisões ainda abertas:** autonomia-alvo do buffer (por exemplo, 2, 6 ou 12 horas), representação JSON versus formato compacto, política de descarte quando a fila atingir seu limite, tratamento de dados externos desatualizados e prevenção de duplicidades após confirmações HTTP ambíguas. A capacidade nominal de 120 registros não deve ser descrita como garantia de duas horas em qualquer condição.
+**Situação atual:** a meta de ensaio de 12 horas foi adotada e ultrapassada na EXP04c.3c.1, com interrupção de aproximadamente 14h26min. O armazenamento agrupado `.grp`, o compacto individual `.cpt` e o JSON individual `.json` são estratégias implementadas. O ensaio registrou 19 leituras não armazenadas; portanto, a meta de duração foi demonstrada, mas a integridade sem perdas ainda não foi homologada. Permanecem em aberto idempotência, política de saturação, frescor dos dados externos e validação da EXP04c.3c.2. Consulte [M4 — Resiliência](04-resiliencia.md).
 
 ---
 
@@ -214,3 +217,23 @@ A consolidação acadêmica das cinco métricas será realizada após a conclus�
 - Open-Meteo. **Documentation**. https://open-meteo.com/en/docs
 
 > **Nota editorial:** estas são referências técnicas iniciais. A bibliografia acadêmica sobre Edge Computing, observabilidade e resiliência será aprofundada nos documentos específicos, com referências verificadas e associadas às afirmações que fundamentarem.
+
+
+## 12. Atualização experimental EXP04c e decisões arquiteturais
+
+### 12.1 Evolução da M4
+
+- **EXP04b.2:** buffer JSON individual, limite de 120 registros; teste prolongado com saturação e 34 leituras não armazenadas.
+- **EXP04c.3c.1:** limite de 300 registros, persistência compactada/agrupada e replay misto; ensaio de aproximadamente 14h26min, fila esvaziada após reconexão, mas 19 registros contabilizados como não armazenados.
+- **Auditoria Supabase:** na janela consultada, 223 registros, 223 timestamps únicos, 194 intervalos de 240 s e 14 intervalos superiores a 240 s; resultados não provam ausência de perdas.
+- **EXP04c.3c.2:** correções de agendamento e fallback sob validação; foi confirmado baseline com fila vazia, PACK ativado e início do ensaio `EXP04 OFF`, sem resultado final ainda.
+
+### 12.2 Decisões de arquitetura
+
+1. **Produção pretendida:** PACK ON como padrão **após homologação**, com persistência agrupada `.grp`; formatos `.cpt` e `.json` permanecem como alternativas de armazenamento individual. Um registro é uma leitura lógica completa, não um arquivo `.cpt` dentro do `.grp`.
+2. **Replay:** reconstruir o JSON original e enviar cada registro separadamente ao Supabase, preservando o timestamp de medição.
+3. **Benchmarks permanentes:** manter `EXP04 COMPACT TEST`, `EXP04 PACK TEST`, `EXP04 PACK ON/OFF`, `EXP04 BUFFER` e `EXP04 FS`, acionáveis sob demanda e com proteções para não prejudicar a operação.
+4. **Separação lógica:** operação contínua, observabilidade e experimentação controlada; preservar espaço Flash/RAM e compatibilidade com duas partições OTA.
+5. **Não homologado:** zero perdas, integridade após queda abrupta de energia, ausência de duplicações sob confirmação HTTP ambígua e disponibilidade de dados externos atualizados durante a desconexão.
+
+A evolução histórica e os critérios de validação estão detalhados em [04-resiliencia.md](04-resiliencia.md).
