@@ -2,8 +2,8 @@
 
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 **Documento:** `docs/metricas/04-resiliencia.md`  
-**Instrumentação principal:** EXP04a, EXP04b.1 e EXP04b.2  
-**Estado:** experimentos funcionais e prolongados realizados; dimensionamento definitivo, entrega idempotente e política de descarte ainda em estudo.
+**Instrumentação principal:** EXP04a, EXP04b.1, EXP04b.2, EXP04c.3c.1 e EXP04c.3c.2  
+**Estado:** ensaio de 14h26min e auditoria SQL realizados na EXP04c.3c.1; EXP04c.3c.2 em validação. Resiliência sem perdas ainda não homologada.
 
 > **Escopo:** avaliar a continuidade do processamento ambiental local durante a indisponibilidade da rede, a persistência de telemetria em LittleFS e a recuperação posterior dos registros. A resiliência do processamento Edge, a persistência local e a entrega à Cloud são propriedades distintas e devem ser avaliadas separadamente.
 
@@ -34,6 +34,10 @@
 - [9. Próximos experimentos](#9-próximos-experimentos)
 - [10. Conclusões parciais](#10-conclusões-parciais)
 - [11. Referências e documentos relacionados](#11-referências-e-documentos-relacionados)
+- [12. EXP04c — compactação, agrupamento e replay](#12-exp04c--compactação-agrupamento-e-replay)
+- [13. Auditoria SQL da EXP04c.3c.1](#13-auditoria-sql-da-exp04c3c1)
+- [14. EXP04c.3c.2 — correções e validação](#14-exp04c3c2--correções-e-validação)
+- [15. Decisões arquiteturais e critérios de homologação](#15-decisões-arquiteturais-e-critérios-de-homologação)
 
 ---
 
@@ -338,7 +342,7 @@ Os experimentos demonstraram que o ESP32 **continua adquirindo e processando inf
 
 A evidência também expôs um limite concreto: no teste prolongado, a fila atingiu o patamar de reserva do filesystem, **34 novas leituras não foram armazenadas** e o reenvio posterior esvaziou somente os registros efetivamente preservados. Portanto, o resultado correto é **resiliência parcial, mensurada e condicionada à capacidade disponível**, e não ausência absoluta de perdas.
 
-A próxima etapa científica consiste em dimensionar o armazenamento, controlar duplicidades e medir o custo da recuperação, estabelecendo critérios explícitos para a autonomia exigida da estação.
+A etapa posterior EXP04c.3c.1 ampliou a capacidade e demonstrou recuperação após aproximadamente 14h26min de indisponibilidade, mas registrou 19 leituras não armazenadas. A EXP04c.3c.2 está em teste para investigar a cadência e os caminhos de falha. Consulte as seções 12–15 antes de interpretar esta conclusão histórica como o estado atual do projeto.
 
 ## 11. Referências e documentos relacionados
 
@@ -362,3 +366,127 @@ A próxima etapa científica consiste em dimensionar o armazenamento, controlar 
 - Consultas de verificação na tabela de telemetria do Supabase, com comparação entre horário original e inserção.
 
 > **Nota de rastreabilidade:** os números são transcritos das observações experimentais discutidas no projeto e devem ser associados aos logs brutos e à identificação exata do build na consolidação final. Não são apresentados como resultados de uma campanha estatística completa.
+
+
+## 12. EXP04c — compactação, agrupamento e replay
+
+### 12.1 Evolução em relação à EXP04b.2
+
+A EXP04b.2 preservava payloads JSON em arquivos individuais, com limite de 120 registros. Na EXP04c.3c.1, o limite lógico passou a **300 registros**, preservando-se a reserva de **64 KiB** do LittleFS. O ciclo Edge nominal permaneceu em **60 s**, com política nominal de persistência OFF a cada **180 s** e reenvio de **um registro a cada 10 s** quando conectado. Esses tempos não são equivalentes: o ciclo de processamento não determina, por si só, a quantidade de registros persistidos.
+
+### 12.2 Formatos físicos e registro lógico
+
+| Formato | Unidade lógica | Uso |
+|---|---|---|
+| `.json` | Uma leitura completa em JSON | Armazenamento individual/fallback |
+| `.cpt` | Uma leitura codificada de forma compacta | Armazenamento individual com menor volume lógico |
+| `.grp` | Várias leituras compactadas | Armazenamento agrupado, com enquadramento e verificação CRC32 por registro |
+
+**Registro** significa uma leitura lógica completa, com os campos do payload destinado ao Supabase. O `.grp` não é um ZIP de arquivos `.cpt`: reúne diretamente registros binários compactados. A compactação não deve eliminar campos do payload. No replay, cada leitura é reconstruída em JSON e transmitida individualmente. A referência externa Open-Meteo presente no payload pode estar desatualizada durante a desconexão.
+
+### 12.3 Resultados do ensaio prolongado EXP04c.3c.1
+
+| Indicador | Observação |
+|---|---:|
+| Indisponibilidade simulada | 51.964.665 ms (aprox. 14h26min) |
+| Ciclos Edge durante OFF | 866 |
+| Pendentes no fim do OFF | 213 (212 periódicos, 1 evento) |
+| Grupos PACK nesse ponto | 14 |
+| Não armazenados ao final da execução | 19 |
+| Pendentes após replay | 0 / 300 |
+| Falhas CRC32 informadas | 0 |
+| Falhas explícitas de gravação/replay informadas | 0 / 0 |
+| Espaço livre após limpeza da fila | 483.328 bytes |
+
+O replay foi observado com respostas HTTP 201 e posterior esvaziamento da fila. Os contadores `gravados desde boot` e `recuperados desde boot` não representam necessariamente o mesmo conjunto temporal; não se deve calcular uma taxa de recuperação dividindo-os diretamente. A existência de **19 leituras não armazenadas impede declarar ausência de perdas**.
+
+A compressão observada em um ponto do ensaio foi de **412.828 bytes originais** para **140.218 bytes armazenados**, equivalentes a uma redução lógica aproximada de 66,0%. Esse indicador não equivale diretamente à economia física do LittleFS, que inclui alocação e metadados.
+
+A economia lógica é calculada por:
+
+$$
+E_{\mathrm{logica}} = \left(1-\frac{B_{\mathrm{armazenados}}}{B_{\mathrm{originais}}}\right)\times100\%
+$$
+
+A ocupação do LittleFS aumentou de 237.568 para 401.408 bytes durante o ensaio, retornando a 237.568 bytes após a recuperação. A diferença de **163.840 bytes** representa ocupação física adicional naquele ponto, não o tamanho lógico dos payloads.
+
+## 13. Auditoria SQL da EXP04c.3c.1
+
+A auditoria foi realizada no Supabase comparando o timestamp de medição (`epoch`) com o horário de inserção (`created_at`), filtrando a estação e uma janela de **02/11/2026, 01h30–16h00, America/Sao_Paulo**. A consulta identificou:
+
+| Indicador | Resultado |
+|---|---:|
+| Registros encontrados | 223 |
+| Timestamps distintos | 223 |
+| Repetições de `epoch` | 0 |
+| Intervalo mínimo / médio / máximo | 60 / 234,61 / 420 s |
+| Intervalos exatamente de 180 s | 1 |
+| Intervalos exatamente de 240 s | 194 |
+| Intervalos superiores a 240 s | 14 |
+| Atraso médio de ingestão | 25.265,6 s |
+| Atraso máximo de ingestão | 51.283,8 s |
+
+Entre as 14 lacunas acima de 240 s, **12 tinham 300 s, uma 360 s e uma 420 s**. O maior intervalo ocorreu entre 11h38min01s e 11h45min01s no horário local. A cadência predominante de 240 s diverge da política nominal de 180 s. A hipótese de deslizamento de prazo por agendamento em ciclos de aproximadamente 60 s motivou correção, mas a causalidade precisa ser confirmada em teste controlado.
+
+O atraso de ingestão é definido por:
+
+$$
+T_{\mathrm{ingestao},i}=t_{\mathrm{created\_at},i}-t_{\mathrm{epoch},i}
+$$
+
+O intervalo entre medições consecutivas é:
+
+$$
+\Delta t_i=t_{\mathrm{epoch},i}-t_{\mathrm{epoch},i-1}
+$$
+
+**Limites de interpretação:** ausência de `epoch` repetido na janela não demonstra entrega exatamente uma vez em todas as condições. Intervalos acima de 240 s não correspondem automaticamente a perdas; os 19 registros não armazenados são um contador interno de escopo diferente. O gráfico remoto reconstruiu a série local histórica, enquanto os atributos externos Open-Meteo apresentaram anomalias de frescor durante a desconexão.
+
+## 14. EXP04c.3c.2 — correções e validação
+
+A versão EXP04c.3c.2 foi preparada para tratar **(a)** o agendamento nominal de 180 s e **(b)** o tratamento de falhas de compactação/PACK com fallback seguro, evitando duplicação quando o estado de escrita for ambíguo. Foram acrescentados indicadores de falha e intervalo real de persistência. Essas mudanças **não equivalem a uma validação experimental concluída**.
+
+### 14.1 Baseline observado antes do ensaio
+
+- LittleFS ativo, **483.328 bytes livres**.
+- Fila **0/300**, não armazenados **0**, falhas definitivas **0**.
+- PACK inicialmente OFF; ativado manualmente por `EXP04 PACK ON`, com confirmação no Monitor Serial.
+- Periodicidade nominal OFF de **180 s**, processamento Edge mantido em **60 s**.
+- `EXP04 OFF` aceito; ensaio de aproximadamente 30 min iniciado.
+
+**Pendente:** resultado de `EXP04 BUFFER` e `EXP04 FS` ao fim do OFF, reconexão, replay e nova auditoria SQL. O contador de fallback igual a zero antes do ensaio não demonstra que o fallback foi exercitado.
+
+### 14.2 Protocolo de validação
+
+1. Registrar baseline (`EXP04 BUFFER` e `EXP04 FS`) e confirmar PACK ON.
+2. Executar `EXP04 OFF` por aproximadamente 30 minutos, preservando o processamento Edge.
+3. Registrar pendentes, grupos, espaço livre, intervalo real mínimo/máximo, falhas PACK, fallback e não armazenados **antes** do retorno da rede.
+4. Executar `EXP04 ON` e acompanhar HTTP 2xx, reenvio e esvaziamento da fila.
+5. Auditar no Supabase a sequência de `epoch`, duplicações, lacunas e defasagem de `created_at`.
+6. Ensaiar separadamente o fallback sob falha induzida segura e, depois, reinicialização e interrupção abrupta de energia.
+
+## 15. Decisões arquiteturais e critérios de homologação
+
+### 15.1 Decisões
+
+- **Meta experimental:** suportar ao menos 12 horas de indisponibilidade, sem confundir duração atingida com ausência de perdas.
+- **Modo pretendido de produção:** PACK ON por padrão, **após validação**; `.cpt` e `.json` preservados como alternativas individuais de persistência. Na versão de teste, o modo PACK foi ativado manualmente e não deve ser presumido persistente após reboot.
+- **Benchmarks permanentes:** manter `EXP04 COMPACT TEST`, `EXP04 PACK TEST`, `EXP04 PACK ON/OFF`, `EXP04 BUFFER` e `EXP04 FS`, acionados sob demanda e isolados da operação crítica.
+- **Organização lógica:** operação normal, observabilidade contínua e camada experimental controlada, com atenção ao consumo de Flash/RAM e às partições OTA.
+- **Integridade:** nunca declarar uma leitura recuperada apenas porque foi tentado o envio; distinguir gravação persistida, confirmação HTTP, unicidade e completude temporal.
+
+### 15.2 Critérios para homologar M4
+
+| Critério | Evidência exigida | Estado |
+|---|---|---|
+| Continuidade Edge durante OFF | Ciclos locais e tempos observados | Evidência favorável |
+| Autonomia ≥ 12 h | Ensaio prolongado | Duração atingida, com perdas |
+| Zero registros não armazenados | Contadores e rastreabilidade | **Não atingido** na 3c.1 |
+| Replay completo do que foi persistido | Fila zerada e auditoria Cloud | Evidência favorável, requer verificação ampliada |
+| Integridade CRC32 | Diagnósticos de leitura/escrita | Sem falhas observadas na 3c.1 |
+| Cadência nominal de 180 s | Logs e intervalos SQL | **Pendente** na 3c.2 |
+| Persistência após reboot e queda de energia | Ensaios específicos na arquitetura PACK | **Pendente** |
+| Idempotência no Supabase | ID estável e unicidade comprovada | **Pendente** |
+| Frescor de dados externos | Timestamp de atualização/flag de validade | **Pendente** |
+
+A homologação final deve incluir identificação do firmware, configuração OTA/LittleFS, logs brutos, consultas SQL reproduzíveis e distinção explícita entre dados medidos, calculados e inferidos.
