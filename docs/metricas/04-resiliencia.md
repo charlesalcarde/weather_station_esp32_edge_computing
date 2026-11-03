@@ -3,7 +3,7 @@
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 **Documento:** `docs/metricas/04-resiliencia.md`  
 **Instrumentação principal:** EXP04a, EXP04b.1, EXP04b.2, EXP04c.3c.1 e EXP04c.3c.2  
-**Estado:** ensaio de 14h26min e auditoria SQL realizados na EXP04c.3c.1; EXP04c.3c.2 em validação. Resiliência sem perdas ainda não homologada.
+**Estado:** EXP04c.3c.2 validada funcionalmente em ensaio curto de Wi-Fi OFF, fallback e replay; EXP04d validado para recuperação após interrupção física de energia **entre gravações**. A meta de 12 h sem perdas e a resistência a interrupção durante escrita ainda não foram homologadas.
 
 > **Escopo:** avaliar a continuidade do processamento ambiental local durante a indisponibilidade da rede, a persistência de telemetria em LittleFS e a recuperação posterior dos registros. A resiliência do processamento Edge, a persistência local e a entrega à Cloud são propriedades distintas e devem ser avaliadas separadamente.
 
@@ -38,6 +38,7 @@
 - [13. Auditoria SQL da EXP04c.3c.1](#13-auditoria-sql-da-exp04c3c1)
 - [14. EXP04c.3c.2 — correções e validação](#14-exp04c3c2--correções-e-validação)
 - [15. Decisões arquiteturais e critérios de homologação](#15-decisões-arquiteturais-e-critérios-de-homologação)
+- [16. EXP04d — interrupção física de energia e recuperação](#16-exp04d--interrupção-física-de-energia-e-recuperação)
 
 ---
 
@@ -442,28 +443,56 @@ $$
 
 **Limites de interpretação:** ausência de `epoch` repetido na janela não demonstra entrega exatamente uma vez em todas as condições. Intervalos acima de 240 s não correspondem automaticamente a perdas; os 19 registros não armazenados são um contador interno de escopo diferente. O gráfico remoto reconstruiu a série local histórica, enquanto os atributos externos Open-Meteo apresentaram anomalias de frescor durante a desconexão.
 
-## 14. EXP04c.3c.2 — correções e validação
+## 14. EXP04c.3c.2 — correções e validação funcional
 
-A versão EXP04c.3c.2 foi preparada para tratar **(a)** o agendamento nominal de 180 s e **(b)** o tratamento de falhas de compactação/PACK com fallback seguro, evitando duplicação quando o estado de escrita for ambíguo. Foram acrescentados indicadores de falha e intervalo real de persistência. Essas mudanças **não equivalem a uma validação experimental concluída**.
+A versão EXP04c.3c.2 corrige o agendamento de persistência OFF, introduz fallback individual seguro quando o PACK falha e amplia a observabilidade (intervalo real, causas de falha e tentativas/sucessos de fallback). O firmware **foi validado no ensaio curto** descrito a seguir; isso não substitui uma repetição do ensaio prolongado de 12 horas.
 
-### 14.1 Baseline observado antes do ensaio
+### 14.1 Baseline e fase OFF
 
-- LittleFS ativo, **483.328 bytes livres**.
-- Fila **0/300**, não armazenados **0**, falhas definitivas **0**.
-- PACK inicialmente OFF; ativado manualmente por `EXP04 PACK ON`, com confirmação no Monitor Serial.
-- Periodicidade nominal OFF de **180 s**, processamento Edge mantido em **60 s**.
-- `EXP04 OFF` aceito; ensaio de aproximadamente 30 min iniciado.
+O baseline foi registrado com fila vazia, LittleFS ativo, **483.328 B livres**, PACK ON ativado manualmente e período OFF nominal de 180 s. Após aproximadamente 40 minutos de teste, os resultados foram:
 
-**Pendente:** resultado de `EXP04 BUFFER` e `EXP04 FS` ao fim do OFF, reconexão, replay e nova auditoria SQL. O contador de fallback igual a zero antes do ensaio não demonstra que o fallback foi exercitado.
+| Indicador | Resultado durante OFF |
+|---|---:|
+| Pendentes / limite | 15 / 300 |
+| Registros periódicos / eventos | 15 / 0 |
+| Grupos `.grp` / pendentes agrupados | 1 / 15 |
+| Intervalo real mínimo / máximo | 179.873 / 180.093 ms |
+| Não armazenados | 0 |
+| Falhas definitivas, gravação, replay, CRC32 | 0 |
+| Bytes originais / armazenados | 28.492 / 9.562 |
+| Espaço livre LittleFS | 471.040 B |
 
-### 14.2 Protocolo de validação
+A redução lógica de bytes nessa etapa foi de aproximadamente **66,44%**. O consumo físico adicional observado no LittleFS foi de **12.288 B**, valor que inclui overhead de alocação e não deve ser confundido com os bytes compactados.
 
-1. Registrar baseline (`EXP04 BUFFER` e `EXP04 FS`) e confirmar PACK ON.
-2. Executar `EXP04 OFF` por aproximadamente 30 minutos, preservando o processamento Edge.
-3. Registrar pendentes, grupos, espaço livre, intervalo real mínimo/máximo, falhas PACK, fallback e não armazenados **antes** do retorno da rede.
-4. Executar `EXP04 ON` e acompanhar HTTP 2xx, reenvio e esvaziamento da fila.
-5. Auditar no Supabase a sequência de `epoch`, duplicações, lacunas e defasagem de `created_at`.
-6. Ensaiar separadamente o fallback sob falha induzida segura e, depois, reinicialização e interrupção abrupta de energia.
+### 14.2 Retorno da rede, fallback e replay
+
+Durante a reconexão e o replay, ocorreram **duas falhas de compactação PACK**, seguidas de **duas tentativas de fallback individual, ambas bem-sucedidas**. Os logs indicaram compactação não reversível e persistência do JSON original; portanto, o fallback preservou as leituras, mas a **causa raiz da falha de compactação continua pendente**.
+
+| Indicador final | Resultado |
+|---|---:|
+| Gravados desde boot | 20 |
+| Recuperados desde boot | 20 |
+| Pendentes / limite | 0 / 300 |
+| Não armazenados / falhas definitivas | 0 / 0 |
+| Falhas PACK compactação / espaço / escrita | 2 / 0 / 0 |
+| Fallback PACK tentativas / sucessos | 2 / 2 |
+| Fallback JSON / falhas de integridade | 2 / 0 |
+| Falhas gravação / replay | 0 / 0 |
+| Falhas CRC32 | 0 |
+| Bytes originais / gravados (acumulados) | 37.952 / 15.236 |
+| Espaço livre após esvaziar fila | 483.328 B |
+
+A redução lógica acumulada foi de aproximadamente **59,85%**, já incluindo os dois JSONs não compactados. Os logs exibiram HTTP 201 no replay de arquivos `.grp` e `.json`.
+
+### 14.3 Auditoria SQL no Supabase
+
+A consulta comparou `epoch` (instante original da medição) com `created_at` (ingestão), utilizando horários locais de `America/Sao_Paulo`. Foram identificados registros históricos de **19h53min02s a 20h41min02s**, com **16 intervalos consecutivos exatamente de 180 s** entre 17 medições; os registros históricos foram recebidos durante o replay iniciado aproximadamente às **20h41min29s**, com atraso máximo observado de **48,46 min**. Também houve novas medições com cadência de 60 s durante a recuperação.
+
+A janela SQL original continha tanto replay quanto envios normais. Assim, o número de linhas selecionadas por uma janela ampla não deve ser automaticamente equiparado ao contador de recuperação. A evidência conjunta (logs, fila esvaziada e timestamps preservados) sustenta a **validação funcional do ensaio curto**, sem demonstrar entrega exatamente uma vez em qualquer cenário.
+
+### 14.4 Conclusão da EXP04c.3c.2
+
+**Validada para o cenário ensaiado:** cadência próxima de 180 s, persistência agrupada, fallback JSON seguro em duas ocorrências, replay misto, ausência de perdas contabilizadas e recuperação da ocupação inicial do LittleFS. Permanecem pendentes o diagnóstico da compactação não reversível, a avaliação de interrupção durante escrita e a repetição prolongada da meta de 12 h sem perdas.
 
 ## 15. Decisões arquiteturais e critérios de homologação
 
@@ -481,12 +510,57 @@ A versão EXP04c.3c.2 foi preparada para tratar **(a)** o agendamento nominal de
 |---|---|---|
 | Continuidade Edge durante OFF | Ciclos locais e tempos observados | Evidência favorável |
 | Autonomia ≥ 12 h | Ensaio prolongado | Duração atingida, com perdas |
-| Zero registros não armazenados | Contadores e rastreabilidade | **Não atingido** na 3c.1 |
-| Replay completo do que foi persistido | Fila zerada e auditoria Cloud | Evidência favorável, requer verificação ampliada |
-| Integridade CRC32 | Diagnósticos de leitura/escrita | Sem falhas observadas na 3c.1 |
-| Cadência nominal de 180 s | Logs e intervalos SQL | **Pendente** na 3c.2 |
-| Persistência após reboot e queda de energia | Ensaios específicos na arquitetura PACK | **Pendente** |
+| Zero registros não armazenados | Contadores e rastreabilidade | **Atingido no ensaio curto 3c.2**; não atingido na 3c.1 prolongada |
+| Replay completo do que foi persistido | Fila zerada e auditoria Cloud | **Validado nos ensaios curtos 3c.2 e EXP04d**; não generalizar |
+| Integridade CRC32 | Diagnósticos de leitura/escrita | Sem falhas contabilizadas nos ensaios apresentados |
+| Cadência nominal de 180 s | Logs e intervalos SQL | **Validada no ensaio curto 3c.2** |
+| Persistência após reboot e queda de energia | Ensaios específicos na arquitetura PACK | **Validada para corte entre gravações no EXP04d**; corte durante escrita pendente |
 | Idempotência no Supabase | ID estável e unicidade comprovada | **Pendente** |
 | Frescor de dados externos | Timestamp de atualização/flag de validade | **Pendente** |
 
 A homologação final deve incluir identificação do firmware, configuração OTA/LittleFS, logs brutos, consultas SQL reproduzíveis e distinção explícita entre dados medidos, calculados e inferidos.
+
+## 16. EXP04d — interrupção física de energia e recuperação
+
+### 16.1 Objetivo e delimitação
+
+Verificar a durabilidade de registros já persistidos em `.grp` após a retirada física da alimentação do ESP32, a reconstrução da fila no boot, a retomada automática da conectividade e a entrega posterior ao Supabase. **Não se induziu deliberadamente a queda de energia durante a gravação Flash**; portanto, não se avaliou atomicidade sob escrita interrompida nem a preservação de uma leitura ainda apenas em RAM.
+
+### 16.2 Procedimento e evidências do dispositivo
+
+1. Com conectividade normal, foi registrado baseline: fila **0/300**, PACK ON, LittleFS livre **483.328 B**.
+2. Foi executado `EXP04 OFF` e a estação permaneceu adquirindo/processando dados localmente. Na última captura anterior ao desligamento físico: **9 pendentes**, **1 grupo `.grp`**, **0 não armazenados**, **0 falhas CRC32** e LittleFS livre **475.136 B**. A tela de resiliência indicava Wi-Fi OFF e **27 ciclos Edge durante OFF** naquele instante.
+3. A alimentação foi interrompida fisicamente e restabelecida. No boot: `LittleFS OK`, **1 grupo e 10 pendentes agrupados**, com fila reconstruída de **10 registros** e próximo ID 31. A diferença entre nove pendências da última captura e dez no boot é compatível com uma persistência adicional entre a captura e o desligamento, mas seu instante não foi registrado.
+4. O firmware reiniciou com PACK OFF, reconectou-se automaticamente ao Wi-Fi e **leu/reproduziu o `.grp` existente mesmo com o modo de novas gravações desativado**. Os logs mostraram HTTP 201 e redução progressiva da fila.
+5. Ao final: **0/300 pendentes**, **11 recuperados desde boot**, **1 gravado desde boot**, **0 não armazenados**, **0 falhas de gravação/replay**, **0 falhas CRC32** e LittleFS livre **483.328 B**, exatamente o baseline.
+
+Os contadores de resiliência do EXP04a foram zerados após o boot; são indicadores em memória e não devem ser usados como histórico persistente da interrupção anterior. O contador de **11 recuperados** não corresponde exclusivamente aos dez registros reconstruídos no boot; há evidência de uma gravação adicional após o reinício, mas o vínculo individual não foi estabelecido no banco.
+
+### 16.3 Auditoria SQL da recuperação no Supabase
+
+A consulta de registros com atraso de ingestão permitiu isolar o lote do EXP04d, distinguindo-o do replay anterior:
+
+| Indicador | EXP04d |
+|---|---|
+| IDs no Supabase | **96239 a 96248** |
+| Registros identificados no lote | **10** |
+| Primeira medição original | 02/11/2026 **20:55:02** (São Paulo) |
+| Última medição original | 02/11/2026 **21:22:02** (São Paulo) |
+| Primeiro recebimento na Cloud | **21:23:18,532188** |
+| Último recebimento na Cloud | **21:24:48,623284** |
+| Intervalos entre medições | **9 de 9 exatamente de 180 s** |
+| Timestamps `epoch` repetidos no lote | **0** |
+| Atraso máximo observado | **1.696,53 s (28,28 min)** |
+| Duração entre primeiro e último recebimento | **aprox. 90,09 s** |
+
+O lote de dez linhas corresponde à fila de dez registros reconstruída no boot. As medições foram produzidas antes do recebimento na Cloud e inseridas sequencialmente em aproximadamente dez segundos por registro, coerentemente com o replay configurado. **A auditoria não identificou de modo inequívoco o 11º registro contabilizado como recuperado desde boot**; por isso, não se deve atribuir todos os onze ao lote SQL acima.
+
+### 16.4 Resultado e limites da validação
+
+**EXP04d aprovado para o cenário ensaiado de queda de energia após persistência:** a fila agrupada sobreviveu, foi reconstruída, retransmitida com confirmações HTTP 201, auditada no Supabase com timestamps originais e removida após a recuperação, liberando o espaço no LittleFS.
+
+Esta aprovação **não** demonstra proteção contra perda de energia no exato momento da escrita, ausência universal de duplicatas em replays repetidos, durabilidade de dados ainda em RAM ou autonomia de 12 horas sem perdas. Esses cenários permanecem como trabalhos futuros.
+
+### 16.5 Decisão de versionamento
+
+A **EXP04c.3c.2 é considerada validada pelo responsável pelo projeto** para os ensaios funcionais executados, e seu pacote deve ser preservado como referência reproduzível. Essa decisão não equivale à homologação integral de todos os cenários da M4. Para produção, permanece a decisão arquitetural de PACK ON por padrão, após configuração explícita na versão apropriada, com manutenção dos comandos de benchmark e diagnóstico.
