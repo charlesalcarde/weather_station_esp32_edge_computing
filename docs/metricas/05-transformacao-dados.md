@@ -1,373 +1,450 @@
-# M5 — Transformação e enriquecimento dos dados no Edge
+# M5 — Transformação e redução de dados no Edge
 
 **Projeto:** Estação Ambiental Inteligente com ESP32  
-**Documento:** `docs/metricas/05-transformacao-dados.md`  
-**Experimento planejado:** EXP05  
-**Estado:** protocolo experimental proposto; **EXP05 ainda não executado**. As funções de processamento citadas são capacidades existentes da estação, não resultados medidos desta métrica.
+**Local no repositório:** `docs/metricas/05-transformacao-dados.md`  
+**Experimento:** EXP05 — M5-A (transformação), M5-B (redução) e M5-C (fidelidade)  
+**Estado:** **avaliação experimental retrospectiva concluída**; transmissão seletiva **não implementada** no firmware  
+**Data da consolidação:** 03/11/2026  
+**Fonte experimental:** `public.leituras`, Supabase; estação `EA-0001`; campanha doméstica  
+**Firmware auditado:** `EstacaoAmbiental_Etapa2_Integracao(1).ino`, função `enviarLeituraCloud()`  
+**Recorte imutável por critério:** `estacao = 'EA-0001' AND epoch IS NOT NULL AND id <= 96330`
 
-> **Escopo:** caracterizar como medições ambientais são convertidas em indicadores, séries temporais, classificações e eventos no ESP32, e avaliar o custo e a utilidade desse enriquecimento. A existência de mais campos não demonstra, por si só, maior qualidade informacional, precisão ou economia de comunicação.
+> **Síntese.** O firmware prevê 74 chaves JSON distintas, agrupadas em 3 medições ambientais básicas, 31 atributos derivados/analíticos, 11 campos de identificação/contexto e 29 campos de referência externa. Na amostra de 95.998 registros históricos, a política simulada **H15+Δ** selecionou **7.824 transmissões**, redução de **91,8498%** das requisições e **91,8410%** dos bytes JSON *estimados*. Os erros de reconstrução permaneceram, por construção da regra, dentro dos limiares exploratórios de 1 °C, 5 pontos percentuais e 1 hPa. Esses resultados **não** equivalem a economia real medida na rede ou no consumo energético.
 
 ---
 
 ## Índice
 
-- [1. Introdução](#1-introdução)
-- [2. Objetivos e perguntas de avaliação](#2-objetivos-e-perguntas-de-avaliação)
-- [3. Fundamentação conceitual](#3-fundamentação-conceitual)
-  - [3.1 Dado bruto, indicador e decisão](#31-dado-bruto-indicador-e-decisão)
-  - [3.2 Transformação, enriquecimento e redundância](#32-transformação-enriquecimento-e-redundância)
-  - [3.3 Qualidade da informação](#33-qualidade-da-informação)
-- [4. Arquitetura e transformações existentes](#4-arquitetura-e-transformações-existentes)
-  - [4.1 Fontes e variáveis de entrada](#41-fontes-e-variáveis-de-entrada)
-  - [4.2 Operações locais](#42-operações-locais)
-  - [4.3 Saídas e consumidores](#43-saídas-e-consumidores)
-- [5. Indicadores propostos para a M5](#5-indicadores-propostos-para-a-m5)
-  - [5.1 Inventário e cobertura das transformações](#51-inventário-e-cobertura-das-transformações)
-  - [5.2 Expansão de atributos](#52-expansão-de-atributos)
-  - [5.3 Custo computacional incremental](#53-custo-computacional-incremental)
-  - [5.4 Custo de comunicação](#54-custo-de-comunicação)
-  - [5.5 Utilidade funcional](#55-utilidade-funcional)
-- [6. Metodologia experimental proposta](#6-metodologia-experimental-proposta)
-  - [6.1 Condições e cenários](#61-condições-e-cenários)
-  - [6.2 Instrumentação e coleta](#62-instrumentação-e-coleta)
-  - [6.3 Procedimento EXP05](#63-procedimento-exp05)
-  - [6.4 Tratamento estatístico](#64-tratamento-estatístico)
-- [7. Plano de registro dos resultados](#7-plano-de-registro-dos-resultados)
-- [8. Discussão prevista e hipóteses](#8-discussão-prevista-e-hipóteses)
+- [1. Introdução e escopo](#1-introdução-e-escopo)
+- [2. Questões e desenho experimental](#2-questões-e-desenho-experimental)
+- [3. Caracterização da campanha e da amostra](#3-caracterização-da-campanha-e-da-amostra)
+- [4. M5-A — Inventário e transformação informacional](#4-m5-a--inventário-e-transformação-informacional)
+- [5. M5-B — Políticas e redução de transmissões](#5-m5-b--políticas-e-redução-de-transmissões)
+- [6. M5-C — Fidelidade da reconstrução](#6-m5-c--fidelidade-da-reconstrução)
+- [7. Estimativa do volume de payload JSON](#7-estimativa-do-volume-de-payload-json)
+- [8. Discussão integrada dos resultados](#8-discussão-integrada-dos-resultados)
 - [9. Limitações e ameaças à validade](#9-limitações-e-ameaças-à-validade)
-- [10. Próximos passos e critérios de conclusão](#10-próximos-passos-e-critérios-de-conclusão)
-- [11. Referências e documentos relacionados](#11-referências-e-documentos-relacionados)
+- [10. Reprodutibilidade e consultas SQL](#10-reprodutibilidade-e-consultas-sql)
+- [11. Conclusões e trabalhos futuros](#11-conclusões-e-trabalhos-futuros)
+- [12. Documentos relacionados](#12-documentos-relacionados)
 
 ---
 
-## 1. Introdução
+## 1. Introdução e escopo
 
-Em uma arquitetura convencional de telemetria, o dispositivo pode limitar-se a coletar medidas e encaminhá-las para processamento posterior. Na Estação Ambiental ESP32, parte da interpretação ocorre no próprio microcontrolador: as leituras alimentam cálculos, históricos, tendências, classificações e eventos, que podem ser consumidos localmente e, conforme o esquema de telemetria, enviados à Cloud.
+A Estação Ambiental ESP32 não se limita a transmitir medições instantâneas: ela produz estatísticas temporais, indicadores físicos, classificações e alertas na borda (*Edge*). A M5 investiga duas perguntas complementares:
 
-A **Métrica M5 — Transformação e enriquecimento dos dados** pretende caracterizar esse processamento do ponto de vista informacional e operacional. Diferentemente das métricas M1–M4, **a M5 ainda não dispõe de uma campanha experimental própria**. Este documento formaliza previamente perguntas, indicadores, condições e critérios de coleta, para reduzir o risco de escolher métricas apenas depois de observar os resultados.
+1. **Quanto a borda transforma os dados básicos?**
+2. **Quanto a Cloud deixaria de receber se o Edge transmitisse seletivamente, e qual seria a perda de fidelidade?**
 
-O interesse acadêmico não é maximizar o número de campos produzidos, mas identificar **quais transformações são úteis, quanto custam e quais compromissos introduzem**.
+A avaliação foi conduzida **retrospectivamente** sobre dados já persistidos no Supabase. Não foram alterados firmware, política real de envio, hardware ou registros históricos. A análise é uma **simulação contrafactual**: compara a telemetria integral observada com a seleção de leituras que *teria ocorrido* sob políticas hipotéticas.
 
----
+**Ambiente:** a estação estava instalada em **ambiente doméstico**, relativamente protegido da atmosfera externa. Esse contexto pode reduzir ou alterar a variabilidade das séries. Os resultados não são automaticamente transferíveis a museus, laboratórios, ambientes fabris ou estações meteorológicas externas.
 
-## 2. Objetivos e perguntas de avaliação
+**Fora do escopo da EXP05 executada:** comparação controlada do custo incremental de CPU/heap de ligar e desligar algoritmos, medição de energia, tráfego total HTTP/TLS/Wi-Fi, implementação da transmissão seletiva e validação metrológica dos sensores. Custos de CPU e memória pertencem principalmente à M2 e não foram isolados neste experimento.
 
-**Objetivo geral:** avaliar sistematicamente a transformação de dados ambientais no ESP32, relacionando produtos informacionais, custo computacional, custo de transmissão e capacidade de interpretação local.
+## 2. Questões e desenho experimental
 
-**Objetivos específicos:**
-
-1. Inventariar entradas, transformações, saídas e respectivas dependências.
-2. Diferenciar valores diretamente medidos de indicadores calculados, estados categóricos, eventos e referências externas.
-3. Quantificar a expansão do esquema de dados sem confundi-la com ganho de informação útil.
-4. Medir o custo incremental de CPU e memória associado às transformações, quando tecnicamente isolável.
-5. Comparar o tamanho de payloads equivalentes com dados essenciais e com dados enriquecidos.
-6. Identificar funções locais que dependem dos indicadores derivados, por exemplo, alertas e visualização de tendências.
-7. Registrar limitações de precisão, atualidade, redundância e rastreabilidade.
-
-**Perguntas orientadoras:**
-
-- Quais interpretações a estação consegue produzir localmente a partir das medições e de seu histórico?
-- Qual o custo adicional dessas operações no ESP32?
-- Quais informações derivadas precisam ser transmitidas e quais poderiam permanecer no Edge?
-- O enriquecimento melhora a capacidade funcional demonstrável ou apenas amplia o payload?
-
----
-
-## 3. Fundamentação conceitual
-
-### 3.1 Dado bruto, indicador e decisão
-
-Para esta avaliação, adota-se a seguinte distinção operacional:
-
-| Categoria | Definição | Exemplos no projeto |
+| Dimensão | Pergunta | Evidência |
 |---|---|---|
-| Medição local | Valor adquirido de sensor físico | Temperatura, umidade relativa, pressão |
-| Indicador derivado | Valor calculado a partir de medições, parâmetros ou histórico | Ponto de orvalho, pressão ao nível do mar, média móvel |
-| Indicador temporal | Caracterização de evolução no tempo | Tendência barométrica, mínimos e máximos |
-| Estado ou classificação | Interpretação categórica baseada em regras | Faixas de umidade, conforto, estado ambiental |
-| Evento ou alerta | Ocorrência detectada segundo critérios definidos | Variação rápida, anomalia, alerta local |
-| Referência externa | Informação obtida de serviço remoto | Dados meteorológicos Open-Meteo |
-| Metadado operacional | Informação sobre dispositivo, conectividade ou coleta | Horários, estado de comunicação, identificação da estação |
+| **M5-A — Transformação** | Quais produtos informacionais são produzidos a partir das grandezas básicas? | Inspeção do firmware e presença de campos no histórico |
+| **M5-B — Redução** | Quantas transmissões e quantos bytes JSON poderiam ser evitados? | Simulação de políticas sobre histórico fixado |
+| **M5-C — Fidelidade** | Quanto a série reconstruída na Cloud se afastaria da série original? | MAE, erros máximos e episódios de desvio |
 
-A inclusão de uma categoria na tabela não implica que todos os seus exemplos sejam campos independentes em cada registro do Supabase. O inventário efetivo do esquema será realizado na EXP05.
+**Hipótese de trabalho:** alterações categóricas de estado ambiental são pouco frequentes em relação às leituras periódicas; a combinação de eventos, heartbeat e gatilhos numéricos pode reduzir a comunicação preservando limites explícitos de erro na reconstrução.
 
-### 3.2 Transformação, enriquecimento e redundância
+### 2.1 Políticas avaliadas
 
-**Transformação** designa uma operação que modifica a representação ou produz um indicador a partir de dados existentes. **Enriquecimento** designa a incorporação de atributos ou contexto que permitem novas consultas, interpretações ou funções. **Redundância** ocorre quando atributos acrescentam pouca informação funcional além de outros já disponíveis.
+- **ORIGINAL:** todos os registros recebidos, incluindo uma duplicidade de `epoch`.
+- **EVENTOS:** primeira leitura e mudança de pelo menos um dos campos `estado_geral`, `instabilidade`, `anomalia` ou `numero_alertas`.
+- **H15, H30, H60:** eventos mais heartbeat de, respectivamente, 900, 1.800 e 3.600 segundos desde a **última transmissão simulada**.
+- **H15+Δ:** H15 acrescida de gatilhos quando a diferença absoluta **em relação ao último valor transmitido** ultrapassa **1 °C** (temperatura), **5 pontos percentuais** (umidade) ou **1 hPa** (pressão local).
 
-Uma média móvel e a leitura instantânea, por exemplo, são relacionadas, mas não equivalentes: a primeira caracteriza o comportamento recente e a segunda descreve o instante. Já transmitir diversas representações numéricas do mesmo valor pode ampliar o payload sem benefício correspondente.
+As mudanças categóricas são detectadas em relação à **leitura cronologicamente anterior**, mesmo que ela não tenha sido transmitida. Os limiares numéricos são **exploratórios**, não requisitos normativos de preservação ou segurança.
 
-### 3.3 Qualidade da informação
+### 2.2 Reconstrução da Cloud
 
-A avaliação deve considerar, conforme aplicável, **proveniência**, **unidade**, **janela temporal**, **atualidade**, **validade**, **reprodutibilidade** e **utilidade para uma função identificável**. Indicadores derivados não superam automaticamente as limitações metrológicas dos sensores de origem. Uma classificação ambiental também não equivale a uma previsão validada.
+Para cada leitura original, o valor disponível hipoteticamente na Cloud é o **último valor transmitido** (*last observation carried forward*, LOCF). O erro é calculado **depois** de aplicar o gatilho de transmissão da leitura atual. Assim, uma leitura que dispara H15+Δ passa imediatamente a ser o novo valor de referência na simulação; não são modelados atrasos, perdas ou filas de rede.
 
----
+## 3. Caracterização da campanha e da amostra
 
-## 4. Arquitetura e transformações existentes
+| Parâmetro | Valor |
+|---|---|
+| Estação | `EA-0001` |
+| Ambiente | Doméstico |
+| Período local | 26/08/2026 18:50:05 a 02/11/2026 22:45:06 (America/Sao_Paulo) |
+| Registros originais | **95.998** |
+| Instantes `epoch` distintos | **95.997** |
+| Duplicidade identificada | Um `epoch` repetido, com dois IDs |
+| Critério de seleção | `id <= 96330`, `epoch IS NOT NULL`, estação `EA-0001` |
+| Ordenação nas simulações | `epoch`, depois `id` |
+| Deduplicação | `DISTINCT ON (epoch)`, preservando menor `id` |
 
-### 4.1 Fontes e variáveis de entrada
+A duplicidade ocorreu no `epoch = 1793086491` (27/10/2026, 04:34:51, horário local), IDs `87430` e `87431`. A causa não foi demonstrada; não se deve atribuí-la automaticamente a replay. A base **ORIGINAL** contabiliza 95.998 registros; as políticas simuladas operam sobre **95.997 instantes distintos**.
 
-O hardware documentado utiliza:
+A restrição por ID torna a amostra estável contra novas inserções, mas **não garante imutabilidade** caso registros antigos sejam editados. Para reprodução integral, preservar um *snapshot* ou exportação versionada do recorte.
 
-- **BMP180:** temperatura e pressão atmosférica;
-- **DHT11:** umidade relativa e temperatura auxiliar;
-- **Relógio e histórico local:** instantes de amostragem e amostras anteriores;
-- **Configurações do dispositivo:** parâmetros necessários a determinadas correções e regras;
-- **Open-Meteo:** referência meteorológica externa consultada pelo ESP32 quando há conectividade.
+## 4. M5-A — Inventário e transformação informacional
 
-A temperatura canônica da telemetria Cloud foi documentada como proveniente do BMP180. Para fins da EXP05, será necessário identificar exatamente quais valores são usados por cada transformação, incluindo unidade, frequência e eventuais regras de validação.
+### 4.1 Fontes físicas e origem dos dados
 
-### 4.2 Operações locais
+- **BMP180:** temperatura canônica da telemetria e pressão atmosférica.
+- **DHT11:** umidade relativa; a temperatura auxiliar do DHT11 não é enviada como `temperatura` nesse payload.
+- **Histórico local, relógio e configuração:** suporte a médias, extremos, tendências e correções.
+- **Open-Meteo:** referência meteorológica externa consultada pelo ESP32; **não** é medição local nem atributo derivado dos sensores físicos.
 
-| Família | Transformação ou função documentada | Dependência principal | Produto esperado |
-|---|---|---|---|
-| Correção física | Pressão equivalente ao nível do mar | Pressão, temperatura e altitude configurada | Indicador corrigido |
-| Cálculo psicrométrico | Ponto de orvalho | Temperatura e umidade | Indicador derivado |
-| Agregação temporal | Média móvel de 15 minutos | Histórico de leituras | Valor suavizado |
-| Resumo temporal | Mínimos e máximos diários | Histórico e referência temporal | Extremos observados |
-| Tendência | Análise/regressão da pressão | Série temporal de pressão | Tendência barométrica |
-| Interpretação | Classificação da umidade e conforto | Leituras e regras | Estado categórico |
-| Análise contextual | Avaliação de instabilidade e estado ambiental | Indicadores e regras | Classificação contextual |
-| Detecção | Anomalias, variações rápidas e eventos | Leituras, histórico e limiares | Evento ou alerta |
-| Comparação externa | Diferenças em relação à referência meteorológica | Medição local e Open-Meteo | Indicador comparativo, quando disponível |
+### 4.2 Inventário auditado da função de envio
 
-Esta tabela descreve **funções existentes na documentação do projeto**; não é uma auditoria linha a linha do firmware nem comprova que cada função esteja presente no payload de todos os ciclos. A EXP05 deverá produzir o inventário verificável dos campos e dependências reais.
+A inspeção das atribuições `doc["chave"] = ...` em `enviarLeituraCloud()` identificou **74 chaves JSON distintas possíveis**:
 
-### 4.3 Saídas e consumidores
+| Grupo | Quantidade | Interpretação |
+|---|---:|---|
+| Grandezas ambientais básicas | **3** | `temperatura`, `umidade`, `pressao_local` |
+| Atributos derivados e analíticos | **31** | Estatísticas, indicadores, estados e alertas |
+| Identificação, tempo e contexto operacional | **11** | Identificação, horários, amostras, RSSI, altitude e origem |
+| Referência meteorológica externa | **29** | Metadados e condições Open-Meteo |
+| **Total** | **74** | Campos **possíveis**, não necessariamente presentes em cada JSON |
 
-```text
-BMP180 / DHT11 + histórico + parâmetros
-                  |
-                  v
-         Aquisição / validação
-                  |
-                  v
-       Transformações no ESP32
-          /        |        \
-         v         v         v
-   Indicadores   Estados   Eventos
-         \         |         /
-          \        |        /
-           v       v       v
-         Dashboard local
-                  |
-                  +----> Seleção/serialização de telemetria
-                                   |
-                                   v
-                             Supabase / Cloud
+Os 31 atributos derivados/analíticos são:
 
-Open-Meteo ---> referência externa (dependente de conectividade)
+| Família | Quantidade | Campos |
+|---|---:|---|
+| Temperatura | 5 | `temperatura_media15`, `temperatura_min_dia`, `hora_temperatura_min`, `temperatura_max_dia`, `hora_temperatura_max` |
+| Umidade | 5 | `umidade_media15`, `umidade_min_dia`, `hora_umidade_min`, `umidade_max_dia`, `hora_umidade_max` |
+| Pressão | 9 | `pressao_mar`, `pressao_media15`, `pressao_media60`, `pressao_min_dia`, `hora_pressao_min`, `pressao_max_dia`, `hora_pressao_max`, `variacao_pressao_janela`, `tendencia_pressao_hora` |
+| Termodinâmica | 1 | `ponto_orvalho` |
+| Estados e classificações | 6 | `estado_geral`, `estado_umidade`, `estado_conforto`, `estado_pressao`, `instabilidade`, `anomalia` |
+| Alertas | 5 | `numero_alertas`, `alerta1`, `alerta2`, `alerta3`, `alerta4` |
+| **Total** | **31** | |
+
+**Atenção à semântica:** horários de extremos, rótulos e mensagens são **produtos informacionais**, mas não 31 novas grandezas físicas ou informações independentes. A relação estrutural `31 / 3 ≈ 10,33` é apenas uma razão descritiva de atributos analíticos por grandeza básica; **não mede ganho de informação, precisão ou entropia**.
+
+A referência antiga do quadro de planejamento, **“4 valores → ~60 atributos”**, foi substituída pelo inventário verificado **“3 grandezas locais → 31 atributos derivados/analíticos; 74 chaves possíveis no JSON completo”**.
+
+### 4.3 Presença dos atributos no histórico
+
+Uma consulta de presença sobre os **31 campos** retornou:
+
+| Indicador | Resultado |
+|---|---:|
+| Registros avaliados | 95.998 |
+| Mínimo de campos não nulos por registro | 31 |
+| Média | 31,00 |
+| Máximo | 31 |
+| Registros com os 31 campos não nulos | 95.998 |
+
+Isso demonstra **completude de não nulidade dos campos selecionados** no recorte. **Não** demonstra independência, qualidade metrológica, pertinência de cada alerta ou ausência de strings vazias. A contagem do inventário e a contagem SQL são ambas de **31 campos**; a divergência mencionada durante a discussão foi um erro de contagem posteriormente corrigido.
+
+### 4.4 Condicionalidade do payload
+
+O firmware inclui `ultima_leitura`, `externo_atualizado` e `externo_ultima_tentativa` apenas quando os respectivos horários são válidos. Os **18 campos externos detalhados** são incluídos quando `externoJaRecebeuDados` é verdadeiro. O banco adiciona `id` e `created_at`, que **não** fazem parte do JSON enviado.
+
+O firmware serializa o documento com `serializeJson(doc, payload)` e envia o corpo por HTTPS. A instrumentação EXP03a contém `payload.length()`, que mede o tamanho do JSON serializado no dispositivo; não foram recuperadas medições pareadas dessa instrumentação para validar byte a byte o recorte histórico.
+
+## 5. M5-B — Políticas e redução de transmissões
+
+### 5.1 Resultados das políticas
+
+| Política | Transmissões simuladas | % da base original | Redução de requisições |
+|---|---:|---:|---:|
+| ORIGINAL | 95.998 | 100,00% | — |
+| EVENTOS | 1.964 | 2,05% | **97,95%** |
+| H15 | 7.782 | 8,11% | **91,8936%** |
+| H30 | 4.610 | 4,80% | **95,20%** |
+| H60 | 3.107 | 3,24% | **96,76%** |
+| **H15+Δ** | **7.824** | **8,15%** | **91,8498%** |
+
+Os percentuais de H15 e H15+Δ foram preservados com quatro casas decimais conforme as consultas; os demais estão arredondados a duas casas. A diferença de uma leitura entre a base original e a série deduplicada tem efeito desprezível sobre os percentuais, mas é metodologicamente documentada.
+
+### 5.2 Fórmulas
+
+Para uma política `p`, usando a base original como referência:
+
+$$
+R_{\mathrm{req},p} = 100\left(1-\frac{N_{\mathrm{tx},p}}{N_{\mathrm{original}}}\right)
+$$
+
+Onde `N_original = 95.998` e `N_tx,p` é a quantidade de transmissões simuladas.
+
+Para a H15+Δ:
+
+$$
+N_{\mathrm{evitadas}} = 95\,998 - 7\,824 = 88\,174
+$$
+
+$$
+R_{\mathrm{req,H15+\Delta}} =
+100\left(1-\frac{7\,824}{95\,998}\right)
+\approx 91{,}8498\%
+$$
+
+Esses valores são **reduções simuladas na contagem de requisições**, não medições de economia de rede ou energia.
+
+## 6. M5-C — Fidelidade da reconstrução
+
+### 6.1 Métricas
+
+Seja `x_i` o valor original de uma variável na leitura `i`, e `\hat{x}_i` o último valor que teria chegado à Cloud segundo a política simulada:
+
+$$
+e_i = \left|x_i-\hat{x}_i\right|
+$$
+
+$$
+\mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n} e_i
+$$
+
+$$
+e_{\max} = \max_{1\leq i\leq n} e_i
+$$
+
+A avaliação considera `n = 95.997` instantes deduplicados. Temperatura em **°C**, umidade em **pontos percentuais (pp)** e pressão local em **hPa**.
+
+### 6.2 Resultados de reconstrução
+
+| Política | MAE T (°C) | MAE UR (pp) | MAE P (hPa) | Máx. T (°C) | Máx. UR (pp) | Máx. P (hPa) |
+|---|---:|---:|---:|---:|---:|---:|
+| EVENTOS | 0,2333 | 1,6843 | 0,9374 | 3,50 | 20,00 | 8,29 |
+| H15 | 0,0478 | 0,2496 | 0,0958 | 3,00 | 13,00 | 2,52 |
+| H30 | 0,0669 | 0,3805 | 0,1512 | 3,00 | 13,00 | 4,57 |
+| H60 | 0,0936 | 0,5829 | 0,2358 | 2,90 | 13,00 | 4,57 |
+| **H15+Δ** | **0,0467** | **0,2477** | **0,0933** | **1,00** | **5,00** | **1,00** |
+
+A política EVENTOS, embora econômica em transmissões, apresenta erros maiores e não deve ser tratada como equivalente à H15+Δ em fidelidade.
+
+### 6.3 Erros extremos da H15
+
+Foram adotados **limites exploratórios estritos**: erro de temperatura `> 1 °C`, umidade `> 5 pp` ou pressão `> 1 hPa`.
+
+| Indicador | Resultado H15 |
+|---|---:|
+| Leituras com erro de temperatura acima do limite | 97 |
+| Leituras com erro de umidade acima do limite | 41 |
+| Leituras com erro de pressão acima do limite | 186 |
+| Leituras com pelo menos um erro acima do limite | **300** |
+| Percentual de instantes com erro extremo | **0,3125%** |
+| Maior sequência consecutiva | **12 leituras** |
+| Maior intervalo entre primeira e última leitura extrema da sequência | **660 s (11 min)** |
+
+A soma `97 + 41 + 186 = 324` supera 300 porque alguns instantes ultrapassaram mais de um limite. O intervalo de 660 segundos é **duração observada entre amostras**, não duração contínua exata do fenômeno.
+
+Na consulta dos 30 episódios mais longos, predominaram episódios com `estado_geral = ESTAVEL`. Exemplos:
+
+| Início local | Leituras | Intervalo observado | Máximo relevante | Estado |
+|---|---:|---:|---|---|
+| 30/09/2026 17:58:51 | 12 | 11 min | UR 8 pp; T 1,5 °C | ESTAVEL |
+| 23/10/2026 09:57:24 | 12 | 11 min | UR 13 pp | ESTAVEL |
+| 25/10/2026 23:12:50 | 12 | 11 min | T 1,7 °C | ESTAVEL |
+| 11/10/2026 17:28:01 | 11 | 10 min | T 1,8 °C; P 1,47 hPa | ESTAVEL |
+
+**Interpretação:** a classificação `ESTAVEL` não implica que o valor numérico seja constante. Isso **não prova erro do classificador ambiental**: classificação de estado e fidelidade de reconstrução respondem a objetivos diferentes.
+
+### 6.4 Ganho da política H15+Δ
+
+| Indicador | H15 | H15+Δ | Diferença |
+|---|---:|---:|---:|
+| Transmissões | 7.782 | 7.824 | **+42** |
+| Erros acima dos limites exploratórios | 300 | 0 | −300 |
+| Máximo T | 3,00 °C | 1,00 °C | −2,00 °C |
+| Máximo UR | 13 pp | 5 pp | −8 pp |
+| Máximo P | 2,52 hPa | 1,00 hPa | −1,52 hPa |
+
+O acréscimo foi de aproximadamente **0,54% das transmissões da H15**. A eliminação dos erros acima dos limiares é **consequência lógica da regra simulada**: a leitura que ultrapassaria o limite é transmitida antes da avaliação do erro reconstruído. **Não** constitui validação independente de precisão, detecção de riscos ou desempenho em rede real.
+
+## 7. Estimativa do volume de payload JSON
+
+### 7.1 Método e unidade
+
+O SQL da Etapa 12 estimou, para cada linha:
+
+```sql
+octet_length(
+  jsonb_strip_nulls(to_jsonb(l) - 'id' - 'created_at')::text
+)
 ```
 
-O diagrama representa relações funcionais, não a sequência exata de chamadas do firmware. Os dados externos podem ficar desatualizados durante indisponibilidade de rede; essa condição deverá ser sinalizada ou controlada na análise.
-
----
-
-## 5. Indicadores propostos para a M5
-
-**Todos os indicadores desta seção são definições de medição propostas, e não resultados da EXP05.**
-
-### 5.1 Inventário e cobertura das transformações
-
-Para cada saída identificada, registrar: nome do campo, tipo, unidade, origem, transformação, parâmetros, janela temporal, consumidor, periodicidade e comportamento quando a entrada é inválida ou ausente.
-
-Um indicador descritivo possível é a cobertura do inventário:
+Os bytes foram somados para a base ORIGINAL e para as linhas selecionadas por H15 e H15+Δ. A medida é a **representação JSON do PostgreSQL**, e **não** o resultado byte a byte de `serializeJson()` no ESP32. Não inclui HTTP, TLS, Wi-Fi, retransmissões ou outros overheads. O cálculo inclui todos os campos persistidos não nulos, exceto `id` e `created_at`; portanto, é um **proxy do payload**, sujeito a diferenças de estrutura, formato e versão de firmware.
 
 $$
-C_{\mathrm{inventario}} = \frac{N_{\mathrm{campos\ documentados}}}{N_{\mathrm{campos\ identificados}}}\times 100\%
-$$
-
-Esse percentual mede **completude da documentação**, não qualidade da informação.
-
-### 5.2 Expansão de atributos
-
-Definir antes do teste um conjunto de **entradas primitivas distintas** e um conjunto de **saídas de interesse**, evitando contar duas vezes aliases, metadados e referências externas.
-
-$$
-F_{\mathrm{expansao}} = \frac{N_{\mathrm{saidas}}}{N_{\mathrm{entradas}}}
+B_{\mathrm{total},p} = \sum_{i \in S_p} B_i
 $$
 
 $$
-\Delta N = N_{\mathrm{saidas}} - N_{\mathrm{entradas}}
-$$
-
-A referência informal de aproximadamente quatro valores de sensores e cerca de 60 campos de telemetria **não foi validada como contagem homogênea para a M5**. Os grupos podem incluir tipos distintos, e a razão resultante não deve ser apresentada como ganho informacional.
-
-### 5.3 Custo computacional incremental
-
-Quando for possível medir dois cenários comparáveis, com as mesmas entradas e condições:
-
-$$
-\Delta t_{\mathrm{Edge}} = t_{\mathrm{enriquecido}} - t_{\mathrm{essencial}}
+R_{\mathrm{bytes},p} =
+100\left(1-\frac{B_{\mathrm{total},p}}{B_{\mathrm{total,original}}}\right)
 $$
 
 $$
-\Delta H = H_{\mathrm{essencial}} - H_{\mathrm{enriquecido}}
+\mathrm{MiB} = \frac{\mathrm{bytes}}{1\,048\,576}
 $$
 
-Aqui, $H$ representa o heap livre medido sob condições equivalentes; um valor positivo de $\Delta H$ indica menor heap livre no cenário enriquecido. A comparação deve considerar alocações transitórias, heap mínimo e variação natural da execução. Não é válido subtrair medições de firmware, rede ou carga de trabalho diferentes sem controle.
+### 7.2 Resultados
 
-### 5.4 Custo de comunicação
+| Política | Transmissões | Bytes JSON estimados | MiB | Média bytes/envio | Redução bytes |
+|---|---:|---:|---:|---:|---:|
+| ORIGINAL | 95.998 | 198.641.730 | 189,4395 | 2.069,23 | — |
+| H15 | 7.782 | 16.120.123 | 15,3733 | 2.071,46 | **91,8848%** |
+| **H15+Δ** | **7.824** | **16.207.199** | **15,4564** | **2.071,47** | **91,8410%** |
 
-Para payloads JSON produzidos a partir **da mesma leitura e com a mesma política de serialização**:
+A H15+Δ representaria **182.434.531 bytes** de JSON estimados a menos que a base original, equivalentes a aproximadamente **173,98 MiB**. Em relação à H15, ela acrescentaria **87.076 bytes** (aproximadamente **85,04 KiB**) para 42 transmissões extras.
 
-$$
-\Delta B = B_{\mathrm{enriquecido}} - B_{\mathrm{essencial}}
-$$
+A redução percentual de bytes é próxima à redução de requisições porque os tamanhos médios dos JSONs selecionados e originais são semelhantes. Isso **não implica** a mesma redução percentual do tráfego de rede completo.
 
-$$
-O_{\mathrm{payload}} = \frac{\Delta B}{B_{\mathrm{essencial}}}\times 100\%
-$$
+### 7.3 Validação estrutural adicional — Etapa 13
 
-Onde $B$ é o tamanho em bytes do corpo JSON. Esse indicador **não inclui** cabeçalhos HTTP, TLS, retransmissões ou custos de conexão. Uma redução de payload não equivale automaticamente à redução proporcional de tráfego de rede ou energia.
+A condição de inclusão dos 18 campos externos detalhados foi testada no SQL:
 
-Para avaliar transmissão seletiva, poderá ser definida uma terceira condição, na qual somente um subconjunto justificado de indicadores é enviado, preservando a disponibilidade local dos demais. Essa política **ainda não foi implementada ou demonstrada como resultado da M5**.
+| Indicador | Resultado |
+|---|---:|
+| Registros com `externo_tem_dados = true` | 95.997 |
+| Registros sem dados externos detalhados | 1 |
+| Bytes antes do ajuste | 198.641.730 |
+| Bytes após o ajuste | 198.641.730 |
+| Diferença | **0** |
+| Menor JSON estimado | 1.569 bytes |
+| Maior JSON estimado | 2.171 bytes |
 
-### 5.5 Utilidade funcional
+**Conclusão limitada:** a remoção condicional dos campos externos detalhados não alterou a estimativa nesse histórico. Isso **não valida** equivalência exata entre ArduinoJson e PostgreSQL, nem cobre todas as condições de omissão de campos.
 
-A utilidade não deve ser representada apenas por uma razão numérica de campos. Propõe-se uma **matriz de rastreabilidade funcional**:
+## 8. Discussão integrada dos resultados
 
-| Indicador derivado | Pergunta que responde | Função local que utiliza | Evidência de uso | Necessário na Cloud? |
-|---|---|---|---|---|
-| Média móvel | Qual o comportamento recente? | Visualização/análise temporal | A verificar | A avaliar |
-| Tendência da pressão | A pressão está subindo ou caindo? | Estado/tendência | A verificar | A avaliar |
-| Ponto de orvalho | Qual a condição psicrométrica estimada? | Indicador ambiental | A verificar | A avaliar |
-| Estado ambiental | Qual classificação resulta das regras? | Dashboard/alertas | A verificar | A avaliar |
-| Evento de variação | Houve alteração relevante segundo limiar? | Alerta local | A verificar | A avaliar |
+A M5 evidencia duas capacidades distintas da arquitetura:
 
-O preenchimento exige inspeção do firmware, dos campos transmitidos e das interfaces. **Não se atribuirá uma nota de qualidade ou ganho percentual sem um critério externo previamente definido.**
+1. **Transformação no Edge:** as três grandezas ambientais locais sustentam estatísticas, tendências, estados e alertas, permitindo interpretação local sem depender continuamente da Cloud.
+2. **Seleção de comunicação:** a simulação retrospectiva mostra que é possível evitar muitas transmissões periódicas, preservando os valores reconstruídos dentro de limites numéricos explícitos na amostra analisada.
 
----
+O contraste entre H15 e H15+Δ é central: **42 transmissões adicionais** reduziram substancialmente os erros máximos, preservando **91,85%** de redução simulada de requisições. A diferença entre estados categóricos e variações numéricas explica a utilidade do gatilho adicional.
 
-## 6. Metodologia experimental proposta
-
-### 6.1 Condições e cenários
-
-Propõem-se três cenários comparáveis:
-
-| Cenário | Processamento local | Payload | Finalidade |
-|---|---|---|---|
-| A — Essencial | Aquisição e tratamento mínimo necessário | Campos primitivos e metadados indispensáveis | Referência de custo |
-| B — Enriquecido | Processamento atual, com indicadores derivados | Esquema completo da implementação testada | Caracterizar o comportamento atual |
-| C — Seletivo (opcional) | Mesmo processamento de B | Subconjunto justificado de indicadores | Estudar redução de transmissão sem perder funções locais |
-
-**Importante:** os cenários A e C são configurações **propostas para teste**. Não se deve afirmar que já existem modos alternáveis no firmware. Para evitar comprometer o funcionamento da estação, recomenda-se inicialmente construir payloads alternativos em ambiente de teste, a partir da mesma amostra, sem alterar a telemetria de produção.
-
-### 6.2 Instrumentação e coleta
-
-Registrar, no mínimo:
-
-- identificação da versão do firmware, data e configuração do teste;
-- sensores, parâmetros de correção e janela histórica disponível;
-- contagem e classificação dos campos de entrada e saída;
-- duração das etapas de processamento, preferencialmente em microssegundos;
-- heap livre e heap mínimo, com pontos de amostragem consistentes;
-- tamanho dos JSONs em bytes, medido antes do envio;
-- presença de valores ausentes, inválidos ou desatualizados;
-- quais funções do dashboard e dos alertas utilizam cada atributo;
-- condições de Wi-Fi e estado da fila de reenvio, se houver.
-
-As métricas M1, M2 e M3 já fornecem instrumentação e referências úteis, mas **não substituem uma comparação controlada específica da EXP05**. Os resultados de experimentos distintos não devem ser tratados como amostras pareadas.
-
-### 6.3 Procedimento EXP05
-
-1. **Congelar a referência:** identificar commit, firmware, esquema de telemetria e parâmetros da estação.
-2. **Inventariar os campos:** mapear as variáveis adquiridas, derivadas, operacionais e externas.
-3. **Mapear dependências:** identificar fórmulas, janelas, limiares e consumidores de cada saída.
-4. **Definir condições comparáveis:** estabelecer cenários A/B e, se viável, C, com entradas idênticas.
-5. **Instrumentar tempos e memória:** medir apenas os blocos pertinentes e preservar logs brutos.
-6. **Medir payloads:** serializar alternativas sobre a mesma amostra e contar bytes, sem duplicar envios de produção.
-7. **Executar repetições:** incluir início com histórico incompleto e regime com histórico estabilizado.
-8. **Avaliar utilidade:** comprovar quais saídas são utilizadas em visualizações, estados e alertas.
-9. **Consolidar:** calcular estatísticas, registrar exceções e relacionar os achados às métricas M1–M4.
-10. **Validar reprodutibilidade:** documentar código, comandos, versões e artefatos suficientes para repetir a experiência.
-
-### 6.4 Tratamento estatístico
-
-Para tempos, tamanhos e memória, registrar contagem de amostras, média, mediana, mínimo, máximo e dispersão quando houver repetições suficientes. Em comparações pareadas, apresentar a distribuição das diferenças por ciclo, e não apenas a diferença entre médias globais. Separar fases de aquecimento, falhas de sensor, períodos de desconexão e eventos de replay quando afetarem a comparação.
-
-A duração e o número de repetições devem ser definidos antes da campanha, considerando a variabilidade observada nos testes preliminares. Não há amostragem EXP05 disponível para estabelecer aqui intervalos de confiança ou significância estatística.
-
----
-
-## 7. Plano de registro dos resultados
-
-**Estado da seção: AGUARDANDO EXECUÇÃO DA EXP05.** As tabelas abaixo são modelos de preenchimento; não contêm resultados observados.
-
-### 7.1 Inventário
-
-| Categoria | Quantidade verificada | Evidência |
-|---|---:|---|
-| Entradas primitivas distintas | Pendente | Inspeção do firmware |
-| Indicadores numéricos derivados | Pendente | Mapeamento do esquema |
-| Estados e classificações | Pendente | Regras implementadas |
-| Eventos e alertas | Pendente | Código/logs |
-| Metadados operacionais | Pendente | Payload real |
-| Campos de referência externa | Pendente | Payload e origem |
-
-### 7.2 Custos e comparação
-
-| Indicador | Cenário A | Cenário B | Cenário C (opcional) |
-|---|---:|---:|---:|
-| Tempo Edge por ciclo (µs) | Pendente | Pendente | Pendente |
-| Heap livre/mínimo (bytes) | Pendente | Pendente | Pendente |
-| Payload JSON (bytes) | Pendente | Pendente | Pendente |
-| Campos enviados (quantidade) | Pendente | Pendente | Pendente |
-| Funções locais preservadas | Pendente | Pendente | Pendente |
-
-### 7.3 Evidências complementares disponíveis
-
-Há resultados de outras campanhas, como tempo de processamento Edge inferior a 1 ms em ciclos observados e payload JSON próximo de 1,9 KB em uma execução da EXP03a. Esses números são **contexto proveniente de M1–M3**, não resultados da EXP05, e não permitem calcular, isoladamente, o custo de enriquecimento. Consultar os relatórios individuais para condições e limites das medições.
-
----
-
-## 8. Discussão prevista e hipóteses
-
-As hipóteses abaixo orientam o experimento e **não constituem conclusões**:
-
-- **H1 — Capacidade funcional:** indicadores temporais e classificações permitem funções locais que não seriam reproduzidas por uma única leitura instantânea sem processamento adicional.
-- **H2 — Custo computacional:** o enriquecimento acrescenta custo de CPU e memória mensurável, cuja magnitude precisa ser determinada sob condições controladas.
-- **H3 — Custo de comunicação:** transmitir campos derivados aumenta o payload em comparação com transmitir apenas campos essenciais, caso os demais parâmetros de serialização permaneçam constantes.
-- **H4 — Seleção de atributos:** pode ser possível manter todas as funções locais e transmitir menos atributos à Cloud, desde que as necessidades do histórico e do dashboard remoto sejam explicitadas.
-
-O experimento poderá refutar ou qualificar essas hipóteses. Não há garantia de que uma estratégia seletiva produza ganho operacional relevante quando o overhead de protocolo dominar o tráfego.
-
----
+**Escolha experimental:** H15+Δ é a política mais favorável **entre as duas variantes de heartbeat de 15 minutos testadas**, para os limiares escolhidos e o histórico doméstico. Não foi feita otimização global dos limiares, avaliação independente em outras campanhas ou demonstração de segurança operacional.
 
 ## 9. Limitações e ameaças à validade
 
-1. **Contagem heterogênea:** misturar medições, metadados, campos externos e atributos derivados infla artificialmente fatores de expansão.
-2. **Dependência temporal:** médias, tendências e extremos dependem de histórico e podem ter comportamento diferente após reinicialização.
-3. **Precisão de origem:** indicadores calculados herdam incertezas e limitações dos sensores BMP180 e DHT11.
-4. **Contexto externo:** Open-Meteo pode representar outro ponto, altitude ou instante, além de ficar indisponível durante falhas de rede.
-5. **Instrumentação:** logs seriais e medidores adicionados podem alterar os tempos e o uso de memória.
-6. **Comparabilidade:** alterar o firmware para desativar algoritmos pode modificar compilação, alocação e fluxo de execução.
-7. **Semântica do payload:** campos nulos, nomes, precisão decimal e formatação JSON afetam bytes sem alterar necessariamente a utilidade.
-8. **Telemetria versus rede:** bytes do corpo JSON não representam o tráfego completo de HTTP/TLS/Wi-Fi.
-9. **Utilidade não validada:** um indicador utilizado no dashboard não é, por isso, automaticamente preciso, preditivo ou útil para decisões reais.
-10. **Interação com resiliência:** armazenamento e reenvio podem alterar o volume de comunicação e os recursos consumidos durante a recuperação.
+1. **Dependência ambiental:** a campanha é doméstica; museus, laboratórios, indústrias e ambiente externo podem exigir outros limiares e apresentar maior variabilidade.
+2. **Simulação retrospectiva:** não houve transmissão seletiva real; a redução de requisições é contrafactual.
+3. **Fidelidade condicionada à regra:** zero ultrapassagens na H15+Δ decorre dos gatilhos e da avaliação imediata após o envio simulado.
+4. **Sem rede real na simulação:** não há latência, perda, falha de POST, atraso, fila, custo de handshake ou retransmissão.
+5. **Reconstrução LOCF:** o erro é calculado nos instantes amostrados, não continuamente entre leituras.
+6. **Eventos categóricos:** mudança de estado é comparada à leitura anterior; a política não foi validada para outros mecanismos de eventos.
+7. **JSON aproximado:** PostgreSQL e ArduinoJson podem divergir na precisão decimal, formato de horário, campos nulos e representação de valores.
+8. **Possíveis versões de firmware:** o histórico cobre várias semanas; o código auditado pode não reproduzir exatamente todas as versões que geraram os registros.
+9. **Contagem de atributos:** 31 inclui horários, rótulos e mensagens; não são 31 informações independentes. Não nulidade não garante utilidade.
+10. **Duplicidade:** um `epoch` duplicado foi deduplicado nas simulações, mas mantido no baseline; a causa não foi demonstrada.
+11. **Limiares exploratórios:** 1 °C, 5 pp e 1 hPa não são critérios universais de conservação, segurança ou precisão metrológica.
+12. **Sem análise de energia/CPU incremental:** ganhos de banda estimados não demonstram ganhos equivalentes em consumo energético ou processamento.
+13. **Sem validação externa de anomalias:** o rótulo `ESTAVEL` não foi usado como verdade de referência sobre ausência de fenômenos ambientais.
 
----
+## 10. Reprodutibilidade e consultas SQL
 
-## 10. Próximos passos e critérios de conclusão
+### 10.1 Critérios gerais
 
-A M5 poderá ser considerada experimentalmente documentada quando houver:
+As consultas foram executadas no SQL Editor do Supabase, usando `SELECT` e, nas simulações, funções temporárias `pg_temp`. Não houve `UPDATE`, `DELETE`, `INSERT` ou alteração permanente do firmware ou dos dados.
 
-- inventário verificável de entradas, transformações, saídas e consumidores;
-- versão de firmware e condições da EXP05 identificadas;
-- medições reproduzíveis dos cenários comparáveis;
-- quantificação de tempos, memória e payload com amostras e dispersão;
-- matriz de utilidade funcional preenchida com evidências;
-- discussão explícita dos resultados, das hipóteses e das limitações;
-- referências cruzadas consistentes com M1, M2, M3 e M4.
+```sql
+-- Amostra de referência: 95.998 registros
+SELECT COUNT(*) AS registros,
+       COUNT(DISTINCT epoch) AS instantes
+FROM public.leituras
+WHERE estacao = 'EA-0001'
+  AND epoch IS NOT NULL
+  AND id <= 96330;
+```
 
-Até lá, o documento permanece classificado como **protocolo experimental**, e não relatório de resultados concluídos. Uma eventual implementação de TinyML constitui evolução futura e não deve ser confundida com as transformações determinísticas atualmente avaliadas.
+```sql
+-- Série temporal deduplicada para as simulações: 95.997 leituras
+SELECT DISTINCT ON (epoch)
+       id, epoch, temperatura, umidade, pressao_local,
+       estado_geral, instabilidade, anomalia, numero_alertas
+FROM public.leituras
+WHERE estacao = 'EA-0001'
+  AND epoch IS NOT NULL
+  AND id <= 96330
+ORDER BY epoch, id;
+```
 
----
+### 10.2 Algoritmo reproduzível de seleção
 
-## 11. Referências e documentos relacionados
+O pseudocódigo abaixo formaliza a lógica utilizada nas funções temporárias SQL; **não é firmware executável**.
 
-### Documentação do projeto
+```text
+para politica em [EVENTOS, H15, H30, H60, H15+DELTA]:
+    ultimo_envio = nenhum
+    leitura_anterior = nenhuma
+
+    para leitura em serie_deduplicada_ordenada:
+        evento = primeira_leitura OU
+                 mudou(estado_geral, instabilidade,
+                       anomalia, numero_alertas)
+                 comparado_com(leitura_anterior)
+
+        heartbeat = ultimo_envio existe E
+                    (leitura.epoch - ultimo_envio.epoch >= intervalo_politica)
+
+        delta = ultimo_envio existe E (
+                  abs(leitura.temperatura - ultimo_envio.temperatura) > 1.0
+               OU abs(leitura.umidade - ultimo_envio.umidade) > 5.0
+               OU abs(leitura.pressao_local - ultimo_envio.pressao_local) > 1.0
+        )
+
+        transmitir = evento
+                  OU (politica_tem_heartbeat E heartbeat)
+                  OU (politica == H15+DELTA E delta)
+
+        se transmitir:
+            ultimo_envio = leitura
+            contar_transmissao()
+            somar_bytes_json_estimados(leitura)
+
+        reconstruido = ultimo_envio
+        acumular_erros_absolutos(leitura, reconstruido)
+        leitura_anterior = leitura
+```
+
+O heartbeat não cria leituras artificiais em intervalos sem dados; só pode transmitir quando existe uma leitura disponível. A política EVENTOS não usa heartbeat; H15+Δ usa 900 s.
+
+### 10.3 Verificação do inventário
+
+A contagem de **74 chaves possíveis** foi obtida inspecionando as atribuições `doc["..."]` da função `enviarLeituraCloud()`. A validação dos **31 campos derivados** foi realizada com `jsonb_build_object(...)` e `jsonb_each(...)`, contando valores distintos de JSON `null` por registro. Os resultados foram 31/31 não nulos em todos os 95.998 registros.
+
+Para auditar os bytes do proxy:
+
+```sql
+SELECT COUNT(*) AS registros,
+       SUM(
+         octet_length(
+           jsonb_strip_nulls(
+             to_jsonb(l) - 'id' - 'created_at'
+           )::text
+         )
+       ) AS bytes_estimados
+FROM public.leituras AS l
+WHERE l.estacao = 'EA-0001'
+  AND l.epoch IS NOT NULL
+  AND l.id <= 96330;
+```
+
+**Rastreabilidade:** os resultados detalhados das etapas de simulação (EVENTOS/H15/H30/H60, episódios extremos, H15+Δ, bytes e condição externa) foram obtidos nas execuções SQL da campanha e consolidados neste documento. Para reprodução exata, recomenda-se versionar também os scripts completos e um *snapshot* do recorte; o pseudocódigo e as consultas resumidas acima não substituem esses artefatos.
+
+## 11. Conclusões e trabalhos futuros
+
+A EXP05 está **concluída no escopo definido**:
+
+- **M5-A:** inventário do firmware com **74 campos possíveis**, incluindo **31 atributos derivados/analíticos**; presença não nula dos 31 no histórico avaliado.
+- **M5-B:** política H15+Δ com **7.824 transmissões simuladas** contra **95.998 registros originais**, redução de **91,8498%** das requisições e **91,8410%** dos bytes JSON estimados.
+- **M5-C:** MAEs de **0,0467 °C**, **0,2477 pp** e **0,0933 hPa**; erros máximos de **1 °C**, **5 pp** e **1 hPa**, sob os limiares experimentais.
+
+A conclusão científica é de **potencial de redução de comunicação com fidelidade de reconstrução controlada**, **não** de economia operacional já implantada.
+
+**Trabalhos futuros, fora da EXP05 atual:**
+
+1. Avaliar campanhas em ambientes com perfis distintos, mantendo identificação de localização física, referência externa e campanha separadas.
+2. Recalcular dinamicamente a M5 no dashboard Vercel, distinguindo resultados simulados de medições operacionais.
+3. Se a transmissão seletiva for implementada, manter uma referência completa de auditoria (por exemplo, histórico local) para não perder a capacidade de avaliar o erro de reconstrução.
+4. Validar o tamanho do JSON contra amostras reais de `payload.length()` do firmware e, separadamente, medir tráfego total e consumo energético.
+5. Explorar sensibilidade a limiares, períodos de heartbeat e atrasos de rede; não extrapolar os resultados domésticos para aplicações críticas sem novos ensaios.
+
+**Apresentação atual:** relatório acadêmico como registro primário; uma página estática no dashboard pode exibir resultados identificados por campanha. O monitoramento dinâmico da M5 é evolução posterior, não parte desta validação.
+
+## 12. Documentos relacionados
 
 - [README — Avaliação experimental das métricas](README.md).
 - [M1 — Latência](01-latencia.md).
@@ -382,11 +459,4 @@ Até lá, o documento permanece classificado como **protocolo experimental**, e 
 - [Processamento Edge](../11-processamento-edge.md).
 - [Particionamento da Flash](../08-particionamento-flash.md).
 
-### Referências técnicas a consultar durante a execução
-
-- Documentação dos sensores BMP180 e DHT11, para limitações de medição.
-- Código-fonte e esquema efetivo do JSON de telemetria da versão experimental selecionada.
-- Documentação do Arduino-ESP32 para instrumentação de tempo e memória.
-- Documentação do Supabase/PostgreSQL para interpretação dos campos persistidos.
-
-**Nota de rastreabilidade:** não foram adicionadas referências bibliográficas específicas sem verificação de autoria, edição e pertinência. A bibliografia acadêmica poderá ser consolidada após a execução da EXP05.
+**Fontes primárias:** firmware auditado `EstacaoAmbiental_Etapa2_Integracao(1).ino`; tabela histórica `public.leituras` (recorte definido na seção 3); resultados SQL das etapas EXP05 executadas. Não foram atribuídas referências bibliográficas externas não verificadas.
