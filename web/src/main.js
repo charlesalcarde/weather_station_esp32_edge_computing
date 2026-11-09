@@ -837,9 +837,12 @@ function prepararEvidenciasParecer(h,r) {
 function renderEvidenciasParecer(h,r) {
   const alvo=$("#parecer-evidencias"),periodo=$("#parecer-periodo");
   if(!alvo||!periodo)return;
+  const anteriores=JSON.stringify(evidenciasParecer);
   evidenciasParecer=prepararEvidenciasParecer(h,r);
-  $("#parecer-resultado")?.replaceChildren();
-  if($("#parecer-status"))$("#parecer-status").textContent="Dados atualizados. Gere um novo parecer para este período.";
+  if(anteriores!==JSON.stringify(evidenciasParecer)){
+    $("#parecer-resultado")?.replaceChildren();
+    if($("#parecer-status"))$("#parecer-status").textContent="Dados atualizados. Gere um novo parecer para este período.";
+  }
   const ev=evidenciasParecer;
   periodo.textContent="Estação "+(ev.estacao||"não informada")+" • "+filtroAtual.rotulo+" • resolução "+(ev.resolucao||"—")+" • "+ev.pontos_agregados_recebidos+" pontos agregados.";
   alvo.replaceChildren();
@@ -1041,7 +1044,7 @@ $("#atualizar-agora").addEventListener("click", async () => {
   try { await carregarAgora(); segundosParaAtualizar = INTERVALO_AGORA_S; }
   finally { atualizandoAgora = false; b.disabled = false; atualizarContador(); }
 });
-$$(".period-button").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
+$(".period-button[data-periodo]").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
 $("#serie-estacao").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#serie-openmeteo").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#aplicar-periodo").addEventListener("click",async()=>{
