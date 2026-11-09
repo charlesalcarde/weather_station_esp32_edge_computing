@@ -63,14 +63,14 @@
       <div id="area-analises" class="dashboard-area" role="region" aria-labelledby="tab-analises" hidden></div>
       <div id="area-edge" class="dashboard-area" role="region" aria-labelledby="tab-edge" hidden>
         <section class="section">
-          <p class="eyebrow">Em planejamento</p>
+          <p class="eyebrow">Processamento na borda</p>
           <h2>Operação Edge</h2>
           <p class="section-note">Estados calculados pelo ESP32 e evidências disponíveis na última telemetria. Esta visão não reconstrói regras ou limiares que não tenham sido transmitidos.</p>
           <p id="edge-fonte" class="section-note" role="status">Aguardando última leitura da estação…</p>
           <div id="edge-evidencias" class="edge-evidencias" aria-live="polite"></div>
           <details class="edge-metodo"><summary>O que estes indicadores explicam?</summary>
             <p>Os estados e alertas abaixo são informados pelo ESP32. Temperatura, umidade, pressão, tendência e RSSI são evidências contemporâneas da última telemetria, mas não demonstram isoladamente a regra que determinou cada estado. A indicação de conectividade é calculada pela API a partir da idade do registro.</p>
-            <p>Para uma explicação causal auditável faltam, conforme o evento, os limiares ativos, a janela de cálculo, a variável disparadora e os registros de transição. Não inferimos esses dados a partir das leituras.</p>
+            <p>A documentação do firmware descreve classificações com histerese temporal: uma condição pode precisar persistir antes da mudança de estado. Para uma explicação causal auditável faltam, conforme o evento, os limiares ativos, a janela de cálculo, a duração de persistência, a variável disparadora e os registros de transição. Não inferimos esses dados a partir das leituras.</p>
           </details>
           <p class="section-note">Histórico de eventos, métricas M1–M5 e laboratório de simulação permanecem planejados.</p>
         </section>
