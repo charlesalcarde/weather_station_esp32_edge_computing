@@ -397,7 +397,7 @@ async function selecionarPeriodo(tipo) {
     const hoje=new Date();
     filtroAtual={tipo:"personalizado",inicio:dataInput(new Date(hoje.getFullYear(),hoje.getMonth(),1)),fim:dataInput(hoje),rotulo:"mês atual"};
   } else {
-    const rotulos={"24h":"24 h","7d":"7 dias","30d":"30 dias"};
+    const rotulos={"60min":"60 min","24h":"24 h","7d":"7 dias","30d":"30 dias"};
     filtroAtual={tipo:"periodo",valor:tipo,rotulo:rotulos[tipo]};
   }
   await carregarHistoricoEResumo();
