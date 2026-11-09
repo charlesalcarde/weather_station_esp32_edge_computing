@@ -54,6 +54,21 @@
         </div>
       </header>
 
+      <nav class="dashboard-nav" aria-label="Áreas do dashboard">
+        <button class="dashboard-tab active" type="button" data-area="monitoramento" id="tab-monitoramento" aria-controls="area-monitoramento" aria-selected="true">Monitoramento</button>
+        <button class="dashboard-tab" type="button" data-area="analises" id="tab-analises" aria-controls="area-analises" aria-selected="false">Análise científica</button>
+        <button class="dashboard-tab" type="button" data-area="edge" id="tab-edge" aria-controls="area-edge" aria-selected="false">Operação Edge</button>
+      </nav>
+      <div id="area-monitoramento" class="dashboard-area" role="region" aria-labelledby="tab-monitoramento"></div>
+      <div id="area-analises" class="dashboard-area" role="region" aria-labelledby="tab-analises" hidden></div>
+      <div id="area-edge" class="dashboard-area" role="region" aria-labelledby="tab-edge" hidden>
+        <section class="section">
+          <p class="eyebrow">Em planejamento</p>
+          <h2>Operação Edge</h2>
+          <p class="section-note">Esta área receberá a explicabilidade dos estados e eventos do ESP32, as métricas M1–M5 e o laboratório de simulação. Nenhum desses dados é simulado como medição real.</p>
+        </section>
+      </div>
+
       <aside class="edge-callout" aria-label="Independência da estação">
         <div class="edge-callout-icon" aria-hidden="true">✓</div>
         <div>

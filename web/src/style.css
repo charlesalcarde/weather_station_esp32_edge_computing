@@ -289,3 +289,13 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
   .hardware-image-wrap { min-height:96px; }
   .hardware-card p { text-align:left; }
 }
+
+/* Navegação por áreas: sem duplicação de dados ou cálculos. */
+.dashboard-nav { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0; padding:8px; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+.dashboard-tab { flex:1 1 180px; text-align:center; font-weight:650; min-height:44px; }
+.dashboard-tab.active { background:var(--active); color:var(--active-text); border-color:var(--active); }
+.dashboard-tab:focus-visible { outline:3px solid var(--info); outline-offset:2px; }
+.dashboard-area[hidden] { display:none !important; }
+.dashboard-area > .section:first-child { margin-top:0; }
+.dashboard-area > .edge-callout:first-child { margin-top:0; }
+@media (max-width:560px) { .dashboard-nav { gap:5px; } .dashboard-tab { flex:1 1 100%; } }

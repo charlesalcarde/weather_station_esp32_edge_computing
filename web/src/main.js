@@ -689,6 +689,36 @@ function iniciarAtualizacaoAutomatica() {
   });
 }
 
+function configurarNavegacao() {
+  // Reorganiza seções existentes, preservando IDs, handlers e gráficos.
+  const monitor = $("#area-monitoramento");
+  const analises = $("#area-analises");
+  const callout = document.querySelector(".edge-callout");
+  const sections = [...document.querySelectorAll("main.container > section.section")];
+  if (callout) monitor.appendChild(callout);
+  for (const section of sections) {
+    const isMonitoramento = section.querySelector("#cards-agora") || section.querySelector("#cards-comparacao");
+    (isMonitoramento ? monitor : analises).appendChild(section);
+  }
+  const botoes = $$(".dashboard-tab");
+  function ativar(area, atualizarUrl=true) {
+    if (!["monitoramento","analises","edge"].includes(area)) area="monitoramento";
+    for (const nome of ["monitoramento","analises","edge"]) {
+      const ativo=nome===area;
+      $("#area-"+nome).hidden=!ativo;
+      const botao=botoes.find(b=>b.dataset.area===nome);
+      botao.classList.toggle("active",ativo);
+      botao.setAttribute("aria-selected",String(ativo));
+    }
+    if (atualizarUrl) history.replaceState(null,"","#"+area);
+    // Chart.js precisa recalcular o tamanho após o painel voltar a ficar visível.
+    if (area==="analises") requestAnimationFrame(()=>Object.values(charts).forEach(chart=>chart.resize()));
+  }
+  botoes.forEach(botao=>botao.addEventListener("click",()=>ativar(botao.dataset.area)));
+  window.addEventListener("hashchange",()=>ativar(location.hash.slice(1),false));
+  ativar(location.hash.slice(1),false);
+}
+
 $("#theme-toggle").addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 $("#atualizar-agora").addEventListener("click", async () => {
   const b = $("#atualizar-agora");
@@ -710,6 +740,7 @@ $("#aplicar-periodo").addEventListener("click",async()=>{
 });
 
 async function iniciar() {
+  configurarNavegacao();
   configurarInfos();
   definirInputsPadrao();
   aplicarTema(document.documentElement.dataset.theme||"light",false);
