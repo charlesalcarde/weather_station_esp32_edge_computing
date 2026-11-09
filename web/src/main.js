@@ -260,21 +260,39 @@ function renderEdge(d) {
   const painel = $("#edge-evidencias");
   if (!fonte || !painel) return;
   fonte.textContent = "Fonte: última telemetria recebida • " + fmtDataHora(d.ultima_leitura) + " • " + (d.estacao || "estação não identificada") + ".";
+
+  // Interpreta apenas critérios cujo valor de entrada é efetivamente transmitido.
+  // O estado permanece aquele informado pelo firmware: não recalculamos a classificação.
+  function contextualizarPressao() {
+    const t = d.tendencia_pressao_hora;
+    if (typeof t !== "number" || !Number.isFinite(t)) return "Tendência não disponível para comparação com os limiares.";
+    const faixa = t > 0.5 ? "subida (> +0,5 hPa/h)" : t < -0.5 ? "queda (< −0,5 hPa/h)" : "estabilidade (−0,5 a +0,5 hPa/h)";
+    return "Tendência " + fmtNumero(t, 2) + " hPa/h na faixa de " + faixa + ". A classificação transmitida pode refletir histerese (3 avaliações) e disponibilidade de histórico.";
+  }
+  function contextualizarUmidade() {
+    const u = d.umidade;
+    if (typeof u !== "number" || !Number.isFinite(u)) return "Umidade não disponível para comparação com os limiares.";
+    const faixa = u < 30 ? "muito seco" : u < 40 ? "seco" : u <= 70 ? "moderada" : u <= 80 ? "elevada" : "muito alta";
+    return "Leitura de " + fmtNumero(u, 0) + "% na faixa " + faixa + ". O estado transmitido pode refletir histerese (3 avaliações).";
+  }
+  function contextualizarGeral() {
+    return "Síntese informada pelo ESP32 a partir de anomalia, instabilidade e alertas; a transição exige 2 avaliações. Não é possível reconstruir todos os critérios internos a partir desta telemetria.";
+  }
   const campos = [
-    ["Estado geral", d.estado_geral, "Classificação transmitida"],
-    ["Estado da umidade", d.estado_umidade, "Classificação transmitida"],
-    ["Estado de conforto", d.estado_conforto, "Classificação transmitida"],
-    ["Estado da pressão", d.estado_pressao, "Classificação transmitida"],
-    ["Instabilidade", d.instabilidade, "Indicador transmitido"],
-    ["Anomalia", d.anomalia, "Indicador transmitido"],
+    ["Estado geral", d.estado_geral, "Classificação transmitida", contextualizarGeral()],
+    ["Estado da umidade", d.estado_umidade, "Classificação transmitida", contextualizarUmidade()],
+    ["Estado de conforto", d.estado_conforto, "Classificação transmitida", "Depende da temperatura DHT11 e da umidade, com 3 avaliações de histerese. A temperatura BMP180 exibida no dashboard não permite verificar isoladamente essa decisão."],
+    ["Estado da pressão", d.estado_pressao, "Classificação transmitida", contextualizarPressao()],
+    ["Instabilidade", d.instabilidade, "Indicador transmitido", "Pontuação combina tendência barométrica, desvios de temperatura DHT11 e umidade. Sem todas as médias e contadores internos, a pontuação não é reconstruída."],
+    ["Anomalia", d.anomalia, "Indicador transmitido", "Pode considerar saltos, divergência entre sensores e desvios das médias de 15 minutos. O disparador específico não está disponível nesta telemetria."],
     ["Número de alertas", d.numero_alertas, "Contagem transmitida"],
     ["Tendência da pressão", d.tendencia_pressao_hora == null ? null : fmtNumero(d.tendencia_pressao_hora, 2) + " hPa/h", "Derivado no Edge"],
-    ["Temperatura", d.temperatura == null ? null : fmtNumero(d.temperatura) + " °C", "Medição local"],
+    ["Temperatura", d.temperatura == null ? null : fmtNumero(d.temperatura) + " °C", "Medição local (BMP180)"],
     ["Umidade", d.umidade == null ? null : fmtNumero(d.umidade, 0) + " %", "Medição local"],
     ["RSSI", d.rssi == null ? null : fmtNumero(d.rssi, 0) + " dBm", "Telemetria de conectividade"]
   ];
   painel.replaceChildren();
-  for (const [nome,valor,origem] of campos) {
+  for (const [nome,valor,origem,contexto] of campos) {
     const item = document.createElement("div");
     item.className = "edge-indicador";
     const titulo = document.createElement("span");
@@ -285,6 +303,12 @@ function renderEdge(d) {
     const descricao = document.createElement("small");
     descricao.textContent = origem;
     item.append(titulo, valorEl, descricao);
+    if (contexto) {
+      const explicacao = document.createElement("p");
+      explicacao.className = "edge-indicador-contexto";
+      explicacao.textContent = contexto;
+      item.appendChild(explicacao);
+    }
     painel.appendChild(item);
   }
 }
