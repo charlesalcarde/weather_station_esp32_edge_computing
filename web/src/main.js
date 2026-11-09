@@ -838,6 +838,8 @@ function renderEvidenciasParecer(h,r) {
   const alvo=$("#parecer-evidencias"),periodo=$("#parecer-periodo");
   if(!alvo||!periodo)return;
   evidenciasParecer=prepararEvidenciasParecer(h,r);
+  $("#parecer-resultado")?.replaceChildren();
+  if($("#parecer-status"))$("#parecer-status").textContent="Dados atualizados. Gere um novo parecer para este período.";
   const ev=evidenciasParecer;
   periodo.textContent="Estação "+(ev.estacao||"não informada")+" • "+filtroAtual.rotulo+" • resolução "+(ev.resolucao||"—")+" • "+ev.pontos_agregados_recebidos+" pontos agregados.";
   alvo.replaceChildren();
@@ -1001,6 +1003,32 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
+function exibirParecerGerado(resultado){
+  const alvo=$("#parecer-resultado");alvo.replaceChildren();
+  const campos=[["Síntese",resultado.sintese],["Observações",resultado.observacoes],["Interpretação contextual",resultado.interpretacao_contextual],["Limitações",resultado.limitacoes],["Recomendações",resultado.recomendacoes],["Conclusão",resultado.conclusao]];
+  for(const [titulo,conteudo] of campos){
+    const card=document.createElement("article");card.className="summary-card";
+    const h=document.createElement("h3");h.textContent=titulo;card.appendChild(h);
+    if(Array.isArray(conteudo)){const ul=document.createElement("ul");for(const item of conteudo){const li=document.createElement("li");li.textContent=item;ul.appendChild(li);}card.appendChild(ul);}
+    else{const p=document.createElement("p");p.textContent=conteudo;card.appendChild(p);}
+    alvo.appendChild(card);
+  }
+}
+$("#parecer-gerar")?.addEventListener("click",async()=>{
+  const botao=$("#parecer-gerar"),status=$("#parecer-status");
+  if(!evidenciasParecer){status.textContent="Aguarde o carregamento dos dados.";return;}
+  const snapshot=JSON.stringify(evidenciasParecer);
+  botao.disabled=true;status.textContent="Gerando parecer com IA…";
+  try{
+    const resposta=await fetch("/api/parecer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({evidencias:JSON.parse(snapshot)})});
+    const dados=await resposta.json();
+    if(!resposta.ok)throw new Error(dados.mensagem||"Falha ao gerar parecer.");
+    if(JSON.stringify(evidenciasParecer)!==snapshot){status.textContent="O período mudou durante a geração. Gere novamente.";return;}
+    exibirParecerGerado(dados.parecer);
+    status.textContent="Parecer gerado em "+new Date(dados.gerado_em).toLocaleString("pt-BR")+" • modelo "+dados.modelo+". Interpretação automatizada; não substitui avaliação técnica.";
+  }catch(e){status.textContent=e.message||"Não foi possível gerar o parecer.";}
+  finally{botao.disabled=false;}
+});
 $("#parecer-copiar")?.addEventListener("click",async()=>{
   if(!evidenciasParecer)return;
   try{await navigator.clipboard.writeText(JSON.stringify(evidenciasParecer,null,2));$("#parecer-periodo").textContent="Evidências copiadas. Período: "+filtroAtual.rotulo;}
