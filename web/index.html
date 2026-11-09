@@ -92,9 +92,6 @@
             <h3 id="m5-titulo">Laboratório M5 — políticas de seleção</h3>
             <p class="section-note">Simulação sobre pontos <strong>agregados</strong> do histórico selecionado em Monitoramento. Não mede transmissões reais, bytes, energia nem preservação de eventos do ESP32.</p>
             <div class="m5-controls">
-              <label>Política
-                <select id="m5-politica"><option value="hibrida">Híbrida: intervalo máximo + Δ</option><option value="periodica">Periódica: intervalo fixo</option></select>
-              </label>
               <label>Intervalo máximo (min)
                 <input id="m5-intervalo" type="number" min="1" max="10080" step="1" value="60">
               </label>
@@ -110,9 +107,13 @@
             </div>
             <p id="m5-estado" class="section-note" role="status">Aguardando histórico…</p>
             <div id="m5-resultados" class="m5-resultados" aria-live="polite"></div>
+            <h4>Comparação de fidelidade</h4>
+            <div class="m5-table-wrap"><table class="m5-table"><thead><tr><th>Métrica</th><th>Periódica</th><th>Híbrida</th></tr></thead><tbody id="m5-comparacao"></tbody></table></div>
+            <div class="m5-plot-controls"><label>Variável exibida <select id="m5-variavel"><option value="temperatura">Temperatura</option><option value="umidade">Umidade</option><option value="pressao_mar">Pressão</option></select></label></div>
+            <div class="m5-chart-wrap"><canvas id="m5-chart" aria-label="Série original e reconstruções das duas políticas" role="img"></canvas></div>
             <details class="edge-metodo"><summary>Metodologia e limites da simulação</summary>
               <p>A política periódica seleciona o primeiro ponto e o primeiro ponto disponível após cada intervalo fixo. A híbrida seleciona adicionalmente um ponto quando alguma variável válida ultrapassa o Δ em relação ao último ponto selecionado. O último ponto do recorte é sempre preservado. O cálculo não usa Open-Meteo.</p>
-              <p>O erro médio absoluto (MAE) compara cada ponto agregado original com o último ponto selecionado anteriormente (retenção do último valor, ou zero-order hold). Lacunas e intervalos sem leitura não são preenchidos; a série é segmentada em lacunas superiores a duas vezes a resolução declarada.</p>
+              <p>MAE, RMSE e erro máximo comparam cada ponto agregado original com o último ponto selecionado (retenção do último valor, ou zero-order hold). A seleção é feita antes de avaliar o erro no ponto selecionado, que portanto tem erro zero. A comparação de extremos verifica se os valores mínimo e máximo originais estão entre os pontos selecionados, sem inferir eventos reais. Lacunas e intervalos sem leitura não são preenchidos; a série é segmentada em lacunas superiores a duas vezes a resolução declarada.</p>
               <p>Redução é calculada sobre <strong>pontos agregados elegíveis</strong>, não sobre requisições HTTP ou registros brutos. Não há garantia de fidelidade para valores entre pontos nem estimativa de energia, bytes ou eventos. Para comparar transmissões reais é necessário executar M5 sobre dados brutos e instrumentação do firmware.</p>
             </details>
           </section>
