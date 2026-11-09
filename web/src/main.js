@@ -659,65 +659,94 @@ function renderRespostaDinamica(h) {
 }
 
 function renderM5(h) {
-  const estado = $("#m5-estado"), saida = $("#m5-resultados");
-  if (!estado || !saida) return;
-  const resolucao = Number(h.intervalo_minutos);
-  const intervalo = Number($("#m5-intervalo").value);
-  const dt = Number($("#m5-dt").value), du = Number($("#m5-du").value), dp = Number($("#m5-dp").value);
-  const politica = $("#m5-politica").value;
-  saida.replaceChildren();
-  if (![resolucao,intervalo,dt,du,dp].every(Number.isFinite) || resolucao <= 0 || intervalo < 1 || intervalo > 10080 || dt <= 0 || du <= 0 || dp <= 0) {
-    estado.textContent = "Informe parâmetros válidos e positivos."; return;
+  const estado=$("#m5-estado"), saida=$("#m5-resultados"), tabela=$("#m5-comparacao");
+  if (!estado || !saida || !tabela) return;
+  const resolucao=Number(h.intervalo_minutos), intervalo=Number($("#m5-intervalo").value);
+  const limiares={temperatura:Number($("#m5-dt").value),umidade:Number($("#m5-du").value),pressao_mar:Number($("#m5-dp").value)};
+  const campos=["temperatura","umidade","pressao_mar"];
+  saida.replaceChildren(); tabela.replaceChildren();
+  if (![resolucao,intervalo,...Object.values(limiares)].every(Number.isFinite) || resolucao<=0 || intervalo<1 || intervalo>10080 || Object.values(limiares).some(v=>v<=0)) {
+    estado.textContent="Informe parâmetros válidos e positivos."; if(charts["m5-chart"]){charts["m5-chart"].destroy();delete charts["m5-chart"];} return;
   }
-  const campos = ["temperatura","umidade","pressao_mar"];
-  const limiares = {temperatura:dt,umidade:du,pressao_mar:dp};
-  const pontos = (Array.isArray(h.dados) ? h.dados : [])
-    .map(p => ({...p,tempo:Date.parse(p.timestamp)}))
-    .filter(p => Number.isFinite(p.tempo) && campos.some(c => typeof p[c] === "number" && Number.isFinite(p[c])))
-    .sort((a,b) => a.tempo-b.tempo);
-  // Elimina buckets duplicados e evita atribuir ausência de dados a uma política.
-  const unicos = pontos.filter((p,i) => i === 0 || p.tempo !== pontos[i-1].tempo);
-  if (unicos.length < 3) { estado.textContent = "Dados insuficientes: são necessários ao menos 3 pontos agregados válidos."; return; }
-  const segmentos = [];
-  for (const p of unicos) {
-    if (!segmentos.length || p.tempo-segmentos[segmentos.length-1].at(-1).tempo > 2*resolucao*60000) segmentos.push([]);
-    segmentos[segmentos.length-1].push(p);
+  const validos=(Array.isArray(h.dados)?h.dados:[]).map(p=>({...p,tempo:Date.parse(p.timestamp)}))
+    .filter(p=>Number.isFinite(p.tempo)&&campos.some(c=>Number.isFinite(p[c]))).sort((a,b)=>a.tempo-b.tempo);
+  const pontos=validos.filter((p,i)=>i===0||p.tempo!==validos[i-1].tempo);
+  if(pontos.length<3){estado.textContent="São necessários ao menos 3 pontos agregados válidos.";return;}
+  const segmentos=[];let segmento=[];
+  for(const p of pontos){
+    if(segmento.length && p.tempo-segmento[segmento.length-1].tempo>2*resolucao*60000){segmentos.push(segmento);segmento=[];}
+    segmento.push(p);
   }
-  let selecionados = 0, somaErros = Object.fromEntries(campos.map(c=>[c,0])), contErros = Object.fromEntries(campos.map(c=>[c,0]));
-  const intervaloMs = intervalo*60000;
-  for (const segmento of segmentos) {
-    let ultimo = segmento[0], proxima = ultimo.tempo+intervaloMs;
-    selecionados++;
-    for (let i=1;i<segmento.length;i++) {
-      const p=segmento[i];
-      const prazo=p.tempo>=proxima;
-      const mudou=politica==="hibrida" && campos.some(c=>Number.isFinite(p[c]) && Number.isFinite(ultimo[c]) && Math.abs(p[c]-ultimo[c])>=limiares[c]);
-      const fim=i===segmento.length-1;
-      if (prazo || mudou || fim) { ultimo=p; selecionados++; proxima=p.tempo+intervaloMs; }
-      // Reconstrução por último valor selecionado, incluindo pontos selecionados (erro zero).
-      for(const c of campos) if(Number.isFinite(p[c]) && Number.isFinite(ultimo[c])) {
-        somaErros[c]+=Math.abs(p[c]-ultimo[c]); contErros[c]++;
+  if(segmento.length) segmentos.push(segmento);
+  const simular=(hibrida)=>{
+    const retidos=new Set(), recon=Object.fromEntries(campos.map(c=>[c,new Map()]));
+    const erros=Object.fromEntries(campos.map(c=>[c,{n:0,soma:0,quadrados:0,max:0}]));
+    const extremos=Object.fromEntries(campos.map(c=>[c,{min:0,max:0,segmentos:0}]));
+    for(const seg of segmentos){
+      let ultimo=seg[0],proxima=ultimo.tempo+intervalo*60000;retidos.add(ultimo.tempo);
+      for(let i=0;i<seg.length;i++){
+        const p=seg[i];
+        if(i>0){
+          const prazo=p.tempo>=proxima;
+          const mudou=hibrida&&campos.some(c=>Number.isFinite(p[c])&&Number.isFinite(ultimo[c])&&Math.abs(p[c]-ultimo[c])>=limiares[c]);
+          if(prazo||mudou||i===seg.length-1){ultimo=p;retidos.add(p.tempo);proxima=p.tempo+intervalo*60000;}
+        }
+        for(const c of campos){
+          const v=Number.isFinite(ultimo[c])?ultimo[c]:null;
+          recon[c].set(p.tempo,v);
+          if(Number.isFinite(p[c])&&v!==null){
+            const e=Math.abs(p[c]-v),m=erros[c];m.n++;m.soma+=e;m.quadrados+=e*e;m.max=Math.max(m.max,e);
+          }
+        }
+      }
+      for(const c of campos){
+        const v=seg.filter(p=>Number.isFinite(p[c]));
+        if(!v.length)continue;
+        const lo=Math.min(...v.map(p=>p[c])),hi=Math.max(...v.map(p=>p[c]));
+        const e=extremos[c];e.segmentos++;
+        if(v.some(p=>p[c]===lo&&retidos.has(p.tempo)))e.min++;
+        if(v.some(p=>p[c]===hi&&retidos.has(p.tempo)))e.max++;
       }
     }
-  }
-  const total=unicos.length, reducao=100*(1-selecionados/total);
-  estado.textContent = "Recorte: " + filtroAtual.rotulo + " • resolução " + (h.resolucao||"—") + " • " + segmentos.length + " segmento(s) contínuo(s).";
-  const indicadores = [
-    ["Pontos agregados elegíveis",String(total)],
-    ["Pontos selecionados",String(selecionados)],
-    ["Redução de pontos",fmtNumero(reducao,1)+"%"],
-    ["MAE temperatura",contErros.temperatura?fmtNumero(somaErros.temperatura/contErros.temperatura,3)+" °C":"—"],
-    ["MAE umidade",contErros.umidade?fmtNumero(somaErros.umidade/contErros.umidade,3)+" p.p.":"—"],
-    ["MAE pressão",contErros.pressao_mar?fmtNumero(somaErros.pressao_mar/contErros.pressao_mar,3)+" hPa":"—"]
+    return {retidos,recon,erros,extremos};
+  };
+  const per=simular(false),hib=simular(true),total=pontos.length;
+  estado.textContent="Recorte: "+filtroAtual.rotulo+" • resolução "+(h.resolucao||"—")+" • "+segmentos.length+" segmento(s) • "+total+" pontos agregados elegíveis.";
+  const f=(n,d=2)=>Number.isFinite(n)?fmtNumero(n,d):"—";
+  const resumo=[
+    ["Pontos selecionados",String(per.retidos.size),String(hib.retidos.size)],
+    ["Redução de pontos",f(100*(1-per.retidos.size/total),1)+"%",f(100*(1-hib.retidos.size/total),1)+"%"]
   ];
-  for (const [nome,valor] of indicadores) {
-    const card=document.createElement("article"); card.className="edge-indicador";
-    const titulo=document.createElement("span"); titulo.className="edge-indicador-nome"; titulo.textContent=nome;
-    const numero=document.createElement("strong"); numero.textContent=valor;
-    card.append(titulo,numero); saida.appendChild(card);
+  const nomes={temperatura:"Temperatura (°C)",umidade:"Umidade (p.p.)",pressao_mar:"Pressão (hPa)"};
+  for(const c of campos){
+    const a=per.erros[c],b=hib.erros[c],ea=per.extremos[c],eb=hib.extremos[c];
+    resumo.push(["MAE "+nomes[c],a.n?f(a.soma/a.n,3):"—",b.n?f(b.soma/b.n,3):"—"]);
+    resumo.push(["RMSE "+nomes[c],a.n?f(Math.sqrt(a.quadrados/a.n),3):"—",b.n?f(Math.sqrt(b.quadrados/b.n),3):"—"]);
+    resumo.push(["Erro máximo "+nomes[c],a.n?f(a.max,3):"—",b.n?f(b.max,3):"—"]);
+    resumo.push(["Extremos preservados "+nomes[c],ea.min+"/"+ea.segmentos+" mín.; "+ea.max+"/"+ea.segmentos+" máx.",eb.min+"/"+eb.segmentos+" mín.; "+eb.max+"/"+eb.segmentos+" máx."]);
   }
+  for(const [nome,pv,hv] of resumo){
+    const tr=document.createElement("tr");
+    for(const v of [nome,pv,hv]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+    tabela.appendChild(tr);
+  }
+  for(const [nome,valor] of [["Pontos elegíveis",String(total)],["Periódica",String(per.retidos.size)+" pontos"],["Híbrida",String(hib.retidos.size)+" pontos"],["Redução híbrida",f(100*(1-hib.retidos.size/total),1)+"%"]]){
+    const card=document.createElement("article");card.className="edge-indicador";
+    const titulo=document.createElement("span");titulo.className="edge-indicador-nome";titulo.textContent=nome;
+    const numero=document.createElement("strong");numero.textContent=valor;card.append(titulo,numero);saida.appendChild(card);
+  }
+  const c=$("#m5-variavel").value,labels=pontos.map(p=>labelTempo(p.timestamp));
+  // Reduz pontos apenas para visualização, sem alterar cálculos das métricas.
+  const passo=Math.max(1,Math.ceil(pontos.length/600));
+  const idx=pontos.map((_,i)=>i).filter(i=>i%passo===0||i===pontos.length-1);
+  const ds=(nome,values,tipo)=>datasetSerie(nome,idx.map(i=>values(i)),tipo);
+  const original=ds("Original",i=>pontos[i][c],"estacao");
+  const periodica=ds("Periódica",i=>per.recon[c].get(pontos[i].tempo),"externo");
+  const hibrida=ds("Híbrida",i=>hib.recon[c].get(pontos[i].tempo),"delta");
+  for(const d of [periodica,hibrida]){d.stepped=true;d.tension=0;d.spanGaps=false;}
+  original.spanGaps=false;
+  criarChart("m5-chart",idx.map(i=>labels[i]),[original,periodica,hibrida]);
 }
-
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -859,7 +888,7 @@ function configurarNavegacao() {
   ativar(location.hash.slice(1),false);
 }
 
-for (const id of ["m5-politica","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
+for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
