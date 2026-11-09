@@ -133,7 +133,7 @@ const INFO = {
   "resposta-subdiaria": {
     eyebrow: "Dinâmica em horas",
     title: "Resposta subdiária do microambiente",
-    body: `<p>Os pontos históricos são agrupados em horas UTC completas, com pelo menos 75% dos intervalos de agregação presentes e valores válidos de ambas as fontes. A análise exige resolução histórica de até 1 hora.</p><p>Calculam-se diferenças entre médias de horas consecutivas, reduzindo a influência de tendências lentas. A razão de variabilidade compara os desvios-padrão dessas diferenças horárias locais e externas. Um valor inferior a 1 indica mudanças horárias locais menos variáveis, mas não demonstra isolamento térmico.</p><p>Testam-se atrasos locais de 1 a 6 horas. Cada candidato é comparado ao atraso zero usando os mesmos horários e exige pelo menos 18 pares, variabilidade suficiente e ganho de correlação de pelo menos 0,10. A correlação cruzada é exploratória: não prova causalidade nem mede diretamente o tempo de resposta física. A umidade relativa também depende da temperatura.</p>`
+    body: `<p>Os pontos históricos são agrupados em horas UTC completas, com pelo menos 75% dos intervalos de agregação presentes e valores válidos de ambas as fontes. A análise exige resolução histórica de até 1 hora.</p><p>Calculam-se diferenças entre médias de horas consecutivas, reduzindo a influência de tendências lentas. A razão de variabilidade compara os desvios-padrão dessas diferenças horárias locais e externas. Um valor inferior a 1 indica mudanças horárias locais menos variáveis, mas não demonstra isolamento térmico.</p><p>Testam-se atrasos locais de 1 a 6 horas. Cada candidato é comparado ao atraso zero usando os mesmos horários e exige pelo menos 18 pares, variabilidade suficiente e ganho de correlação de pelo menos 0,10. A curva expansível mostra r para 0–6 horas; o número de pares pode variar por atraso. A escolha do atraso continua exigindo ganho em relação a r(0) nos mesmos horários. A correlação cruzada é exploratória: não prova causalidade nem mede diretamente o tempo de resposta física. A umidade relativa também depende da temperatura.</p>`
   },
   "resposta-dinamica": {
     eyebrow: "Dinâmica ambiental",
@@ -491,6 +491,8 @@ function renderRespostaSubdiaria(h) {
     }
     const base=estatistica([...mudancas.values()]);
     let melhor=null;
+    const curva = [];
+    if (base) curva.push({atraso:0,r:base.r,n:base.n});
     if (base) for(let atraso=1;atraso<=6;atraso++){
       const deslocados=[],zero=[];
       for (const [indice,local] of mudancas) {
@@ -501,13 +503,27 @@ function renderRespostaSubdiaria(h) {
       }
       if (deslocados.length < 18 || deslocados.length < Math.ceil(mudancas.size*0.7)) continue;
       const teste=estatistica(deslocados),controle=estatistica(zero);
+      curva.push({atraso,r:teste?.r ?? null,n:teste?.n ?? deslocados.length,comparavel:!!controle && !!teste});
       if(teste&&controle&&teste.r>controle.r+0.10&&(!melhor||teste.r-controle.r>melhor.ganho))
         melhor={atraso,r:teste.r,r0:controle.r,n:teste.n,ganho:teste.r-controle.r};
     }
     const atrasoTexto=!base?"Não estimável":melhor?`${melhor.atraso} h`:"Não evidenciado";
     const razaoTexto=base?fmtNumero(base.ratio,2):"Não estimável";
     const nota=!base?"Exige pelo menos 18 mudanças horárias válidas e variabilidade suficiente.":melhor?`Correlação alinhada: ${fmtNumero(melhor.r,2)}; sem atraso nos mesmos horários: ${fmtNumero(melhor.r0,2)} (n=${melhor.n}).`:`Sem ganho suficiente para atrasos de 1–6 h; r(0)=${fmtNumero(base.r,2)}.`;
-    return `<article class="summary-card contextual-card"><h3>${titulo}</h3><div class="stat-line"><span>Atraso local exploratório</span><strong>${atrasoTexto}</strong></div><div class="stat-line"><span>Razão de variabilidade horária</span><strong>${razaoTexto}</strong></div><div class="stat-line"><span>Mudanças horárias válidas</span><strong>${mudancas.size}</strong></div><p class="quality-caption">${nota}</p></article>`;
+    const linhas = curva.map(p => {
+      const valido = p.r !== null && (p.atraso===0 || p.comparavel);
+      const r = valido ? p.r : null;
+      const x = r === null ? 50 : 50 + 50 * Math.max(-1,Math.min(1,r));
+      const left = Math.min(50,x), width=Math.abs(x-50);
+      const destaque = melhor?.atraso===p.atraso;
+      return `<div class="lag-row${destaque?" lag-row-selected":""}" role="listitem" aria-label="Atraso ${p.atraso} horas: correlação ${r===null?"indisponível":fmtNumero(r,2)}, ${p.n} pares">
+        <span class="lag-hour">${p.atraso} h</span>
+        <div class="lag-track" aria-hidden="true"><span class="lag-zero"></span>${r===null?"":`<span class="lag-bar" style="left:${left}%;width:${width}%"></span>`}</div>
+        <strong class="lag-value">${r===null?"—":fmtNumero(r,2)}</strong><small class="lag-count">n=${p.n}</small>
+      </div>`;
+    }).join("");
+    const grafico = base ? `<details class="lag-details"><summary>Curva de correlação cruzada (0–6 h)</summary><p class="quality-caption">Correlação de Pearson entre mudanças horárias; cada atraso utiliza pares disponíveis distintos. Compare a seleção de atraso somente com r(0) calculado nos mesmos horários, conforme a nota acima. Barras à esquerda indicam correlação negativa.</p><div class="lag-axis"><span>−1</span><span>0</span><span>+1</span></div><div class="lag-rows" role="list" aria-label="Correlação por atraso">${linhas}</div></details>` : "";
+    return `<article class="summary-card contextual-card"><h3>${titulo}</h3><div class="stat-line"><span>Atraso local exploratório</span><strong>${atrasoTexto}</strong></div><div class="stat-line"><span>Razão de variabilidade horária</span><strong>${razaoTexto}</strong></div><div class="stat-line"><span>Mudanças horárias válidas</span><strong>${mudancas.size}</strong></div><p class="quality-caption">${nota}</p>${grafico}</article>`;
   }).join("");
 }
 
