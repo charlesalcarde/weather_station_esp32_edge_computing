@@ -299,3 +299,19 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .dashboard-area > .section:first-child { margin-top:0; }
 .dashboard-area > .edge-callout:first-child { margin-top:0; }
 @media (max-width:560px) { .dashboard-nav { gap:5px; } .dashboard-tab { flex:1 1 100%; } }
+
+/* PR #7: curvas de correlação cruzada compactas e expansíveis. */
+.lag-details { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.lag-details summary { cursor:pointer; font-weight:650; color:var(--text); }
+.lag-details summary:focus-visible { outline:2px solid var(--info); outline-offset:3px; }
+.lag-axis { display:flex; justify-content:space-between; padding:0 67px 0 45px; margin-top:12px; color:var(--muted); font-size:.78rem; }
+.lag-rows { display:grid; gap:7px; margin-top:6px; }
+.lag-row { display:grid; grid-template-columns:35px minmax(0,1fr) 46px 52px; gap:8px; align-items:center; font-size:.86rem; }
+.lag-track { position:relative; height:16px; background:var(--surface-soft); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.lag-zero { position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed var(--muted); z-index:1; }
+.lag-bar { position:absolute; top:3px; bottom:3px; background:#679df2; border-radius:3px; }
+.lag-row-selected .lag-bar { background:#26b6a0; }
+.lag-row-selected .lag-value { font-weight:800; }
+.lag-hour,.lag-value,.lag-count { font-variant-numeric:tabular-nums; }
+.lag-count { color:var(--muted); text-align:right; }
+@media(max-width:480px) { .lag-row { grid-template-columns:30px minmax(0,1fr) 40px 43px; gap:4px; font-size:.75rem; } .lag-axis { padding:0 49px 0 34px; } }
