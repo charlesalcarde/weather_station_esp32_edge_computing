@@ -255,8 +255,43 @@ function renderIdentidade(d) {
   $("#station-altitude").textContent = d.altitude == null ? "—" : `${fmtNumero(d.altitude, 0)} m`;
 }
 
+function renderEdge(d) {
+  const fonte = $("#edge-fonte");
+  const painel = $("#edge-evidencias");
+  if (!fonte || !painel) return;
+  fonte.textContent = "Fonte: última telemetria recebida • " + fmtDataHora(d.ultima_leitura) + " • " + (d.estacao || "estação não identificada") + ".";
+  const campos = [
+    ["Estado geral", d.estado_geral, "Classificação transmitida"],
+    ["Estado da umidade", d.estado_umidade, "Classificação transmitida"],
+    ["Estado de conforto", d.estado_conforto, "Classificação transmitida"],
+    ["Estado da pressão", d.estado_pressao, "Classificação transmitida"],
+    ["Instabilidade", d.instabilidade, "Indicador transmitido"],
+    ["Anomalia", d.anomalia, "Indicador transmitido"],
+    ["Número de alertas", d.numero_alertas, "Contagem transmitida"],
+    ["Tendência da pressão", d.tendencia_pressao_hora == null ? null : fmtNumero(d.tendencia_pressao_hora, 2) + " hPa/h", "Derivado no Edge"],
+    ["Temperatura", d.temperatura == null ? null : fmtNumero(d.temperatura) + " °C", "Medição local"],
+    ["Umidade", d.umidade == null ? null : fmtNumero(d.umidade, 0) + " %", "Medição local"],
+    ["RSSI", d.rssi == null ? null : fmtNumero(d.rssi, 0) + " dBm", "Telemetria de conectividade"]
+  ];
+  painel.replaceChildren();
+  for (const [nome,valor,origem] of campos) {
+    const item = document.createElement("div");
+    item.className = "edge-indicador";
+    const titulo = document.createElement("span");
+    titulo.className = "edge-indicador-nome";
+    titulo.textContent = nome;
+    const valorEl = document.createElement("strong");
+    valorEl.textContent = valor == null || valor === "" ? "Não informado" : String(valor);
+    const descricao = document.createElement("small");
+    descricao.textContent = origem;
+    item.append(titulo, valorEl, descricao);
+    painel.appendChild(item);
+  }
+}
+
 function renderAgora(d) {
   setConexao(d.status);
+  renderEdge(d);
   renderIdentidade(d);
   const itens = [
     ["Status", (d.status || "—").toUpperCase()],
@@ -285,6 +320,10 @@ async function carregarAgora() {
     return dados;
   } catch (erro) {
     setConexao("offline");
+    const fonte = $("#edge-fonte");
+    if (fonte) fonte.textContent = "Última telemetria indisponível. Não é possível apresentar estados atuais."; 
+    const painel = $("#edge-evidencias");
+    if (painel) painel.replaceChildren();
     throw erro;
   }
 }
