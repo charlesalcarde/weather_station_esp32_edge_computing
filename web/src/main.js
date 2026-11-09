@@ -130,6 +130,11 @@ const INFO = {
     title: "Δ Estação − Open-Meteo",
     body: `<p>O delta mostra a diferença entre a medição/valor da estação e a referência externa da Open-Meteo. Um valor positivo significa que a estação está acima da referência; um valor negativo, abaixo.</p><p>Essa diferença é especialmente útil porque a estação encontra-se em um microambiente local que pode responder de forma diferente das condições externas.</p>`
   },
+  "analise-contextual": {
+    eyebrow: "Análise científica",
+    title: "Relação local × referência externa",
+    body: `<p>Compara valores locais e externos que compartilham o mesmo intervalo agregado. A diferença média é local menos externo; na umidade, a unidade é ponto percentual.</p><p>O coeficiente de Pearson descreve associação linear, não causalidade. Não é calculado quando há poucos pares ou variabilidade insuficiente. Valores externos repetidos entre intervalos não representam novas observações independentes; por isso, a correlação é apenas exploratória e não recebe teste de significância.</p><p>Esta versão não estima defasagem temporal, atenuação de ciclos nem incerteza de sensores.</p>`
+  },
   "qualidade-temporal": {
     eyebrow: "Observabilidade",
     title: "Qualidade temporal do histórico",
@@ -395,6 +400,43 @@ function renderQualidadeTemporal(h) {
   alvo.innerHTML = cards.map(([titulo,valor,descricao]) => `<article class="summary-card"><h3>${titulo}</h3><strong class="quality-value">${valor}</strong><p class="quality-caption">${descricao}</p></article>`).join("");
 }
 
+function renderAnaliseContextual(h) {
+  const alvo = $("#cards-contextuais");
+  if (!alvo) return;
+  const dados = Array.isArray(h.dados) ? h.dados : [];
+  const variaveis = [
+    ["Temperatura", "temperatura", "externo_temperatura", "°C"],
+    ["Umidade", "umidade", "externo_umidade", "p.p."],
+    ["Pressão ao nível do mar", "pressao_mar", "externo_pressao_mar", "hPa"]
+  ];
+  const resultado = variaveis.map(([titulo,local,externo,unidade]) => {
+    const pares = dados.filter(p => Number.isFinite(p[local]) && Number.isFinite(p[externo]))
+      .map(p => [p[local],p[externo]]);
+    const n = pares.length;
+    if (!n) return { titulo, unidade, n, media:null, r:null, motivo:"Sem pares válidos" };
+    const mediaL = pares.reduce((s,p)=>s+p[0],0)/n;
+    const mediaE = pares.reduce((s,p)=>s+p[1],0)/n;
+    const media = mediaL-mediaE;
+    let cov=0, varL=0, varE=0;
+    for (const [l,e] of pares) {
+      const dl=l-mediaL, de=e-mediaE;
+      cov+=dl*de; varL+=dl*dl; varE+=de*de;
+    }
+    // Evita correlação espúria com referência externa constante ou quase constante.
+    const limiarL = Math.max(1e-12,n*1e-10*Math.max(1,Math.abs(mediaL))**2);
+    const limiarE = Math.max(1e-12,n*1e-10*Math.max(1,Math.abs(mediaE))**2);
+    const valido = n >= 10 && varL > limiarL && varE > limiarE;
+    const r = valido ? Math.max(-1,Math.min(1,cov/Math.sqrt(varL*varE))) : null;
+    const motivo = n < 10 ? "Pares insuficientes" : !valido ? "Variabilidade insuficiente" : "Associação linear exploratória";
+    return {titulo,unidade,n,media,r,motivo};
+  });
+  alvo.innerHTML = resultado.map(x => {
+    const diferenca = x.media === null ? "—" : `${x.media >= 0 ? "+" : ""}${fmtNumero(x.media,2)} ${x.unidade}`;
+    const correlacao = x.r === null ? "Não estimável" : fmtNumero(x.r,3);
+    return `<article class="summary-card contextual-card"><h3>${x.titulo}</h3><div class="stat-line"><span>Diferença média</span><strong>${diferenca}</strong></div><div class="stat-line"><span>Correlação (r)</span><strong>${correlacao}</strong></div><div class="stat-line"><span>Pares válidos</span><strong>${x.n}</strong></div><p class="quality-caption">${x.motivo}</p></article>`;
+  }).join("");
+}
+
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -413,6 +455,7 @@ function renderHistorico(h) {
   $("#amostras-info").textContent = `Amostras: ${h.amostras_brutas ?? "—"}`;
   aplicarVisibilidadeGlobal();
   renderQualidadeTemporal(h);
+  renderAnaliseContextual(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
