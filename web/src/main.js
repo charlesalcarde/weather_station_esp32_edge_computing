@@ -684,15 +684,21 @@ function renderM5(h) {
     const extremos=Object.fromEntries(campos.map(c=>[c,{min:0,max:0,segmentos:0}]));
     for(const seg of segmentos){
       let ultimo=seg[0],proxima=ultimo.tempo+intervalo*60000;retidos.add(ultimo.tempo);
+      // Cada variável retém seu último valor efetivamente transmitido.
+      // Um bucket selecionado com campo ausente não apaga a reconstrução anterior.
+      const retidoPorCampo=Object.fromEntries(campos.map(c=>[c,Number.isFinite(ultimo[c])?ultimo[c]:null]));
       for(let i=0;i<seg.length;i++){
         const p=seg[i];
         if(i>0){
           const prazo=p.tempo>=proxima;
-          const mudou=hibrida&&campos.some(c=>Number.isFinite(p[c])&&Number.isFinite(ultimo[c])&&Math.abs(p[c]-ultimo[c])>=limiares[c]);
-          if(prazo||mudou||i===seg.length-1){ultimo=p;retidos.add(p.tempo);proxima=p.tempo+intervalo*60000;}
+          const mudou=hibrida&&campos.some(c=>Number.isFinite(p[c])&&Number.isFinite(retidoPorCampo[c])&&Math.abs(p[c]-retidoPorCampo[c])>=limiares[c]);
+          if(prazo||mudou||i===seg.length-1){
+            ultimo=p;retidos.add(p.tempo);proxima=p.tempo+intervalo*60000;
+            for(const c of campos)if(Number.isFinite(p[c]))retidoPorCampo[c]=p[c];
+          }
         }
         for(const c of campos){
-          const v=Number.isFinite(ultimo[c])?ultimo[c]:null;
+          const v=retidoPorCampo[c];
           recon[c].set(p.tempo,v);
           if(Number.isFinite(p[c])&&v!==null){
             const e=Math.abs(p[c]-v),m=erros[c];m.n++;m.soma+=e;m.quadrados+=e*e;m.max=Math.max(m.max,e);
