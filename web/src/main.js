@@ -913,7 +913,7 @@ function definirInputsPadrao() {
 
 async function selecionarPeriodo(tipo) {
   $("#erro-periodo").textContent="";
-  $(".period-button[data-periodo]").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
+  $$(".period-button[data-periodo]").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
   if(tipo==="personalizado") { $("#custom-period").classList.remove("hidden"); return; }
   $("#custom-period").classList.add("hidden");
   if(tipo==="mes") {
@@ -1044,7 +1044,7 @@ $("#atualizar-agora").addEventListener("click", async () => {
   try { await carregarAgora(); segundosParaAtualizar = INTERVALO_AGORA_S; }
   finally { atualizandoAgora = false; b.disabled = false; atualizarContador(); }
 });
-$(".period-button[data-periodo]").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
+$$(".period-button[data-periodo]").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
 $("#serie-estacao").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#serie-openmeteo").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#aplicar-periodo").addEventListener("click",async()=>{
