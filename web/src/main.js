@@ -658,6 +658,66 @@ function renderRespostaDinamica(h) {
   alvo.innerHTML=cards.join("");
 }
 
+function renderM5(h) {
+  const estado = $("#m5-estado"), saida = $("#m5-resultados");
+  if (!estado || !saida) return;
+  const resolucao = Number(h.intervalo_minutos);
+  const intervalo = Number($("#m5-intervalo").value);
+  const dt = Number($("#m5-dt").value), du = Number($("#m5-du").value), dp = Number($("#m5-dp").value);
+  const politica = $("#m5-politica").value;
+  saida.replaceChildren();
+  if (![resolucao,intervalo,dt,du,dp].every(Number.isFinite) || resolucao <= 0 || intervalo < 1 || intervalo > 10080 || dt <= 0 || du <= 0 || dp <= 0) {
+    estado.textContent = "Informe parâmetros válidos e positivos."; return;
+  }
+  const campos = ["temperatura","umidade","pressao_mar"];
+  const limiares = {temperatura:dt,umidade:du,pressao_mar:dp};
+  const pontos = (Array.isArray(h.dados) ? h.dados : [])
+    .map(p => ({...p,tempo:Date.parse(p.timestamp)}))
+    .filter(p => Number.isFinite(p.tempo) && campos.some(c => typeof p[c] === "number" && Number.isFinite(p[c])))
+    .sort((a,b) => a.tempo-b.tempo);
+  // Elimina buckets duplicados e evita atribuir ausência de dados a uma política.
+  const unicos = pontos.filter((p,i) => i === 0 || p.tempo !== pontos[i-1].tempo);
+  if (unicos.length < 3) { estado.textContent = "Dados insuficientes: são necessários ao menos 3 pontos agregados válidos."; return; }
+  const segmentos = [];
+  for (const p of unicos) {
+    if (!segmentos.length || p.tempo-segmentos[segmentos.length-1].at(-1).tempo > 2*resolucao*60000) segmentos.push([]);
+    segmentos[segmentos.length-1].push(p);
+  }
+  let selecionados = 0, somaErros = Object.fromEntries(campos.map(c=>[c,0])), contErros = Object.fromEntries(campos.map(c=>[c,0]));
+  const intervaloMs = intervalo*60000;
+  for (const segmento of segmentos) {
+    let ultimo = segmento[0], proxima = ultimo.tempo+intervaloMs;
+    selecionados++;
+    for (let i=1;i<segmento.length;i++) {
+      const p=segmento[i];
+      const prazo=p.tempo>=proxima;
+      const mudou=politica==="hibrida" && campos.some(c=>Number.isFinite(p[c]) && Number.isFinite(ultimo[c]) && Math.abs(p[c]-ultimo[c])>=limiares[c]);
+      const fim=i===segmento.length-1;
+      if (prazo || mudou || fim) { ultimo=p; selecionados++; proxima=p.tempo+intervaloMs; }
+      // Reconstrução por último valor selecionado, incluindo pontos selecionados (erro zero).
+      for(const c of campos) if(Number.isFinite(p[c]) && Number.isFinite(ultimo[c])) {
+        somaErros[c]+=Math.abs(p[c]-ultimo[c]); contErros[c]++;
+      }
+    }
+  }
+  const total=unicos.length, reducao=100*(1-selecionados/total);
+  estado.textContent = "Recorte: " + filtroAtual.rotulo + " • resolução " + (h.resolucao||"—") + " • " + segmentos.length + " segmento(s) contínuo(s).";
+  const indicadores = [
+    ["Pontos agregados elegíveis",String(total)],
+    ["Pontos selecionados",String(selecionados)],
+    ["Redução de pontos",fmtNumero(reducao,1)+"%"],
+    ["MAE temperatura",contErros.temperatura?fmtNumero(somaErros.temperatura/contErros.temperatura,3)+" °C":"—"],
+    ["MAE umidade",contErros.umidade?fmtNumero(somaErros.umidade/contErros.umidade,3)+" p.p.":"—"],
+    ["MAE pressão",contErros.pressao_mar?fmtNumero(somaErros.pressao_mar/contErros.pressao_mar,3)+" hPa":"—"]
+  ];
+  for (const [nome,valor] of indicadores) {
+    const card=document.createElement("article"); card.className="edge-indicador";
+    const titulo=document.createElement("span"); titulo.className="edge-indicador-nome"; titulo.textContent=nome;
+    const numero=document.createElement("strong"); numero.textContent=valor;
+    card.append(titulo,numero); saida.appendChild(card);
+  }
+}
+
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -679,6 +739,7 @@ function renderHistorico(h) {
   renderAnaliseContextual(h);
   renderRespostaDinamica(h);
   renderRespostaSubdiaria(h);
+  renderM5(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
@@ -798,6 +859,10 @@ function configurarNavegacao() {
   ativar(location.hash.slice(1),false);
 }
 
+for (const id of ["m5-politica","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
+  const el=$("#"+id);
+  el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
+}
 $("#theme-toggle").addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 $("#atualizar-agora").addEventListener("click", async () => {
   const b = $("#atualizar-agora");
