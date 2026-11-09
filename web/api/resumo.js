@@ -38,12 +38,13 @@ function resolverIntervalo(query) {
 
   const periodo = String(query.periodo || "24h").toLowerCase();
   const duracoes = {
+    "60min": 60 * 60 * 1000,
     "24h": 24 * 60 * 60 * 1000,
     "7d": 7 * 24 * 60 * 60 * 1000,
     "30d": 30 * 24 * 60 * 60 * 1000
   };
   if (!duracoes[periodo]) {
-    throw erroHttp(400, "periodo_invalido", "Use periodo=24h, periodo=7d, periodo=30d ou informe inicio e fim.");
+    throw erroHttp(400, "periodo_invalido", "Use periodo=60min, periodo=24h, periodo=7d, periodo=30d ou informe inicio e fim.");
   }
   return { tipo: periodo, inicio: new Date(agora.getTime() - duracoes[periodo]), fim: agora };
 }
