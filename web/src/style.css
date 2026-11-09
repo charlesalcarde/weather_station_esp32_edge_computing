@@ -339,3 +339,22 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .edge-regra p { margin:0 0 8px; line-height:1.55; }
 .edge-regra p:last-child { margin-bottom:0; }
 .edge-indicador-contexto { border-top:1px solid var(--border); margin:3px 0 0; padding-top:10px; font-size:.83rem; line-height:1.45; color:var(--muted); }
+
+/* PR #9 — Laboratório M5: simulação retrospectiva de políticas. */
+.m5-lab { margin-top:28px; padding:20px; border:1px solid var(--border); border-radius:14px; }
+.m5-lab h3 { margin:4px 0 12px; font-size:1.2rem; }
+.m5-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:12px; margin:18px 0; }
+.m5-controls label { display:flex; flex-direction:column; gap:8px; font-size:.85rem; }
+.m5-controls input,.m5-controls select { box-sizing:border-box; width:100%; min-width:0; padding:10px; border-radius:8px; border:1px solid var(--border); color:inherit; background:var(--surface); font:inherit; }
+.m5-resultados { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:12px; margin:16px 0; }
+@media(max-width:540px){ .m5-lab { padding:14px; } .m5-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } .m5-controls label:first-child { grid-column:1/-1; } }
+
+.m5-table-wrap { overflow-x:auto; margin:14px 0 22px; }
+.m5-table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.m5-table th,.m5-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+.m5-table th:not(:first-child),.m5-table td:not(:first-child) { text-align:right; }
+.m5-table thead { color:var(--muted); }
+.m5-plot-controls { display:flex; justify-content:flex-end; margin:12px 0; }
+.m5-plot-controls label { display:flex; align-items:center; gap:10px; }
+.m5-plot-controls select { padding:8px; border:1px solid var(--border); border-radius:8px; color:inherit; background:var(--surface); }
+.m5-chart-wrap { height:300px; min-width:0; position:relative; margin-bottom:18px; }
