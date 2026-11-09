@@ -130,6 +130,11 @@ const INFO = {
     title: "Δ Estação − Open-Meteo",
     body: `<p>O delta mostra a diferença entre a medição/valor da estação e a referência externa da Open-Meteo. Um valor positivo significa que a estação está acima da referência; um valor negativo, abaixo.</p><p>Essa diferença é especialmente útil porque a estação encontra-se em um microambiente local que pode responder de forma diferente das condições externas.</p>`
   },
+  "resposta-subdiaria": {
+    eyebrow: "Dinâmica em horas",
+    title: "Resposta subdiária do microambiente",
+    body: `<p>Os pontos históricos são agrupados em horas UTC completas, com pelo menos 75% dos intervalos de agregação presentes e valores válidos de ambas as fontes. A análise exige resolução histórica de até 1 hora.</p><p>Calculam-se diferenças entre médias de horas consecutivas, reduzindo a influência de tendências lentas. A razão de variabilidade compara os desvios-padrão dessas diferenças horárias locais e externas. Um valor inferior a 1 indica mudanças horárias locais menos variáveis, mas não demonstra isolamento térmico.</p><p>Testam-se atrasos locais de 1 a 6 horas. Cada candidato é comparado ao atraso zero usando os mesmos horários e exige pelo menos 18 pares, variabilidade suficiente e ganho de correlação de pelo menos 0,10. A correlação cruzada é exploratória: não prova causalidade nem mede diretamente o tempo de resposta física. A umidade relativa também depende da temperatura.</p>`
+  },
   "resposta-dinamica": {
     eyebrow: "Dinâmica ambiental",
     title: "Defasagem e variabilidade local × externa",
@@ -442,6 +447,70 @@ function renderAnaliseContextual(h) {
   }).join("");
 }
 
+function renderRespostaSubdiaria(h) {
+  const alvo = $("#cards-subdiaria");
+  if (!alvo) return;
+  const inicio = Date.parse(h.periodo?.inicio), fim = Date.parse(h.periodo?.fim);
+  const passo = Number(h.intervalo_minutos) * 60000, hora = 3600000;
+  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || !Number.isFinite(passo) || passo <= 0 || passo > hora) {
+    alvo.textContent = "Análise indisponível: selecione um período com resolução de até 1 hora.";
+    return;
+  }
+  const primeiraHora = Math.ceil(inicio / hora), ultimaHora = Math.floor(fim / hora) - 1;
+  const horas = new Map();
+  for (const p of (Array.isArray(h.dados) ? h.dados : [])) {
+    const ts = Date.parse(p.timestamp);
+    if (!Number.isFinite(ts)) continue;
+    const indice = Math.floor(ts / hora);
+    if (indice < primeiraHora || indice > ultimaHora) continue;
+    if (!horas.has(indice)) horas.set(indice, []);
+    horas.get(indice).push(p);
+  }
+  const esperados = Math.round(hora / passo);
+  function estatistica(pares) {
+    if (pares.length < 18) return null;
+    const n=pares.length, ml=pares.reduce((s,p)=>s+p[0],0)/n, me=pares.reduce((s,p)=>s+p[1],0)/n;
+    let vl=0,ve=0,cov=0;
+    for (const [l,e] of pares) {const dl=l-ml,de=e-me;vl+=dl*dl;ve+=de*de;cov+=dl*de;}
+    if (vl/n < 1e-6 || ve/n < 1e-6) return null;
+    return {r:cov/Math.sqrt(vl*ve),ratio:Math.sqrt(vl/ve),n};
+  }
+  const variaveis=[["Temperatura","temperatura","externo_temperatura"],["Umidade relativa","umidade","externo_umidade"]];
+  alvo.innerHTML=variaveis.map(([titulo,lKey,eKey])=>{
+    const medias=new Map();
+    for (const [indice,pontos] of horas) {
+      const validos=pontos.filter(p=>Number.isFinite(p[lKey])&&Number.isFinite(p[eKey]));
+      if (validos.length < Math.ceil(esperados*0.75)) continue;
+      medias.set(indice,[validos.reduce((s,p)=>s+p[lKey],0)/validos.length,validos.reduce((s,p)=>s+p[eKey],0)/validos.length]);
+    }
+    // Diferenças apenas entre horas consecutivas, sem preencher lacunas artificialmente.
+    const mudancas=new Map();
+    for (const [indice,valor] of medias) {
+      const anterior=medias.get(indice-1);
+      if (anterior) mudancas.set(indice,[valor[0]-anterior[0],valor[1]-anterior[1]]);
+    }
+    const base=estatistica([...mudancas.values()]);
+    let melhor=null;
+    if (base) for(let atraso=1;atraso<=6;atraso++){
+      const deslocados=[],zero=[];
+      for (const [indice,local] of mudancas) {
+        const externoAnterior=mudancas.get(indice-atraso);
+        if (!externoAnterior) continue;
+        deslocados.push([local[0],externoAnterior[1]]);
+        zero.push([local[0],local[1]]);
+      }
+      if (deslocados.length < 18 || deslocados.length < Math.ceil(mudancas.size*0.7)) continue;
+      const teste=estatistica(deslocados),controle=estatistica(zero);
+      if(teste&&controle&&teste.r>controle.r+0.10&&(!melhor||teste.r-controle.r>melhor.ganho))
+        melhor={atraso,r:teste.r,r0:controle.r,n:teste.n,ganho:teste.r-controle.r};
+    }
+    const atrasoTexto=!base?"Não estimável":melhor?`${melhor.atraso} h`:"Não evidenciado";
+    const razaoTexto=base?fmtNumero(base.ratio,2):"Não estimável";
+    const nota=!base?"Exige pelo menos 18 mudanças horárias válidas e variabilidade suficiente.":melhor?`Correlação alinhada: ${fmtNumero(melhor.r,2)}; sem atraso nos mesmos horários: ${fmtNumero(melhor.r0,2)} (n=${melhor.n}).`:`Sem ganho suficiente para atrasos de 1–6 h; r(0)=${fmtNumero(base.r,2)}.`;
+    return `<article class="summary-card contextual-card"><h3>${titulo}</h3><div class="stat-line"><span>Atraso local exploratório</span><strong>${atrasoTexto}</strong></div><div class="stat-line"><span>Razão de variabilidade horária</span><strong>${razaoTexto}</strong></div><div class="stat-line"><span>Mudanças horárias válidas</span><strong>${mudancas.size}</strong></div><p class="quality-caption">${nota}</p></article>`;
+  }).join("");
+}
+
 function renderRespostaDinamica(h) {
   const alvo = $("#cards-dinamica");
   if (!alvo) return;
@@ -530,6 +599,7 @@ function renderHistorico(h) {
   renderQualidadeTemporal(h);
   renderAnaliseContextual(h);
   renderRespostaDinamica(h);
+  renderRespostaSubdiaria(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
