@@ -60,7 +60,16 @@
         <button class="dashboard-tab" type="button" data-area="edge" id="tab-edge" aria-controls="area-edge" aria-selected="false">Operação Edge</button>
       </nav>
       <div id="area-monitoramento" class="dashboard-area" role="region" aria-labelledby="tab-monitoramento"></div>
-      <div id="area-analises" class="dashboard-area" role="region" aria-labelledby="tab-analises" hidden></div>
+      <div id="area-analises" class="dashboard-area" role="region" aria-labelledby="tab-analises" hidden>
+        <section class="section parecer-preparacao">
+          <div class="section-title-row"><div><p class="eyebrow">Preparação do PR #10</p><h2>Parecer Ambiental Inteligente</h2></div></div>
+          <p class="section-note">Nesta primeira etapa, consolidamos evidências auditáveis do período. A interpretação por IA ainda não está habilitada; nenhum texto abaixo é atribuído a um modelo de linguagem.</p>
+          <p id="parecer-periodo" class="section-note" role="status">Aguardando dados do período…</p>
+          <div id="parecer-evidencias" class="m5-resultados"></div>
+          <button type="button" id="parecer-copiar" class="period-button">Copiar evidências JSON</button>
+          <details class="edge-metodo"><summary>Metodologia e próximos passos</summary><p>O pacote contém estatísticas do resumo calculado no backend, pares válidos local × Open-Meteo e cobertura dos pontos agregados. Não se presume causalidade, conformidade normativa ou condições não medidas. O parecer por LLM será habilitado somente após validação do pacote e configuração segura da API no backend.</p></details>
+        </section>
+      </div>
       <div id="area-edge" class="dashboard-area" role="region" aria-labelledby="tab-edge" hidden>
         <section class="section">
           <p class="eyebrow">Processamento na borda</p>
