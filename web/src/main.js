@@ -130,6 +130,11 @@ const INFO = {
     title: "Δ Estação − Open-Meteo",
     body: `<p>O delta mostra a diferença entre a medição/valor da estação e a referência externa da Open-Meteo. Um valor positivo significa que a estação está acima da referência; um valor negativo, abaixo.</p><p>Essa diferença é especialmente útil porque a estação encontra-se em um microambiente local que pode responder de forma diferente das condições externas.</p>`
   },
+  "qualidade-temporal": {
+    eyebrow: "Observabilidade",
+    title: "Qualidade temporal do histórico",
+    body: `<p>Os indicadores medem a presença de intervalos agregados no histórico. A cobertura não equivale à taxa de recebimento das leituras brutas do ESP32.</p><p>Uma lacuna pode indicar ausência de transmissão, armazenamento ou consulta; não comprova interrupção das medições locais. A latência Edge → Cloud exige timestamps separados de medição e recebimento.</p>`
+  },
   "resumo": {
     eyebrow: "Análise histórica",
     title: "Resumo do período",
@@ -343,6 +348,53 @@ function aplicarVisibilidadeGlobal() {
   if(orv){ orv.setDatasetVisibility(0, est); orv.update(); }
 }
 
+function renderQualidadeTemporal(h) {
+  const alvo = $("#cards-qualidade");
+  if (!alvo) return;
+  const inicio = Date.parse(h.periodo?.inicio);
+  const fim = Date.parse(h.periodo?.fim);
+  const bucketMs = Number(h.intervalo_minutos) * 60000;
+  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio || !Number.isFinite(bucketMs) || bucketMs <= 0) {
+    alvo.textContent = "Metadados temporais indisponíveis.";
+    return;
+  }
+
+  // Considera apenas buckets inteiramente contidos na janela [inicio, fim).
+  // Os buckets parciais das bordas não são classificados como perdas.
+  const primeiroCompleto = Math.ceil(inicio / bucketMs);
+  const ultimoCompleto = Math.floor(fim / bucketMs) - 1;
+  const esperados = Math.max(0, ultimoCompleto - primeiroCompleto + 1);
+  const presentes = new Set();
+  let ultimaLeitura = null;
+
+  for (const ponto of (Array.isArray(h.dados) ? h.dados : [])) {
+    const ts = Date.parse(ponto.timestamp);
+    if (!Number.isFinite(ts)) continue;
+    if (ts >= inicio && ts < fim && (ultimaLeitura === null || ts > ultimaLeitura)) ultimaLeitura = ts;
+    const indice = Math.floor(ts / bucketMs);
+    if (indice >= primeiroCompleto && indice <= ultimoCompleto) presentes.add(indice);
+  }
+
+  const indices = [...presentes].sort((a,b) => a-b);
+  let maiorLacuna = 0;
+  let anterior = primeiroCompleto - 1;
+  for (const indice of indices) {
+    maiorLacuna = Math.max(maiorLacuna, indice - anterior - 1);
+    anterior = indice;
+  }
+  if (esperados > 0) maiorLacuna = Math.max(maiorLacuna, ultimoCompleto - anterior);
+  const faltantes = Math.max(0, esperados - presentes.size);
+  const cobertura = esperados ? 100 * presentes.size / esperados : null;
+  const atraso = ultimaLeitura === null ? null : Math.max(0, (fim - ultimaLeitura) / 60000);
+  const cards = [
+    ["Cobertura de intervalos", cobertura === null ? "—" : `${fmtNumero(cobertura, 1)} %`, `${presentes.size} de ${esperados} intervalos completos`],
+    ["Intervalos sem dados", String(faltantes), `Resolução: ${h.resolucao || "—"}`],
+    ["Maior lacuna", `${fmtNumero(maiorLacuna * Number(h.intervalo_minutos), 0)} min`, "Intervalos completos consecutivos sem dados"],
+    ["Último ponto do período", ultimaLeitura === null ? "—" : fmtDataHora(ultimaLeitura), atraso === null ? "Nenhum ponto disponível" : `${fmtNumero(atraso, 1)} min antes do fim consultado`]
+  ];
+  alvo.innerHTML = cards.map(([titulo,valor,descricao]) => `<article class="summary-card"><h3>${titulo}</h3><strong class="quality-value">${valor}</strong><p class="quality-caption">${descricao}</p></article>`).join("");
+}
+
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -360,6 +412,7 @@ function renderHistorico(h) {
   $("#resolucao-info").textContent = `Resolução: ${h.resolucao || "—"}`;
   $("#amostras-info").textContent = `Amostras: ${h.amostras_brutas ?? "—"}`;
   aplicarVisibilidadeGlobal();
+  renderQualidadeTemporal(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
