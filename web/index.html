@@ -65,7 +65,14 @@
         <section class="section">
           <p class="eyebrow">Em planejamento</p>
           <h2>Operação Edge</h2>
-          <p class="section-note">Esta área receberá a explicabilidade dos estados e eventos do ESP32, as métricas M1–M5 e o laboratório de simulação. Nenhum desses dados é simulado como medição real.</p>
+          <p class="section-note">Estados calculados pelo ESP32 e evidências disponíveis na última telemetria. Esta visão não reconstrói regras ou limiares que não tenham sido transmitidos.</p>
+          <p id="edge-fonte" class="section-note" role="status">Aguardando última leitura da estação…</p>
+          <div id="edge-evidencias" class="edge-evidencias" aria-live="polite"></div>
+          <details class="edge-metodo"><summary>O que estes indicadores explicam?</summary>
+            <p>Os estados e alertas abaixo são informados pelo ESP32. Temperatura, umidade, pressão, tendência e RSSI são evidências contemporâneas da última telemetria, mas não demonstram isoladamente a regra que determinou cada estado. A indicação de conectividade é calculada pela API a partir da idade do registro.</p>
+            <p>Para uma explicação causal auditável faltam, conforme o evento, os limiares ativos, a janela de cálculo, a variável disparadora e os registros de transição. Não inferimos esses dados a partir das leituras.</p>
+          </details>
+          <p class="section-note">Histórico de eventos, métricas M1–M5 e laboratório de simulação permanecem planejados.</p>
         </section>
       </div>
 
