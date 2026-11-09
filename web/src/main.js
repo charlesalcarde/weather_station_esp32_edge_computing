@@ -700,7 +700,7 @@ function configurarNavegacao() {
     const isMonitoramento = section.querySelector("#cards-agora") || section.querySelector("#cards-comparacao");
     (isMonitoramento ? monitor : analises).appendChild(section);
   }
-  const botoes = $(".dashboard-tab");
+  const botoes = $$(".dashboard-tab");
   function ativar(area, atualizarUrl=true) {
     if (!["monitoramento","analises","edge"].includes(area)) area="monitoramento";
     for (const nome of ["monitoramento","analises","edge"]) {
