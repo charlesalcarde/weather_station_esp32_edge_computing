@@ -63,9 +63,30 @@
       <div id="area-analises" class="dashboard-area" role="region" aria-labelledby="tab-analises" hidden></div>
       <div id="area-edge" class="dashboard-area" role="region" aria-labelledby="tab-edge" hidden>
         <section class="section">
-          <p class="eyebrow">Em planejamento</p>
+          <p class="eyebrow">Processamento na borda</p>
           <h2>Operação Edge</h2>
-          <p class="section-note">Esta área receberá a explicabilidade dos estados e eventos do ESP32, as métricas M1–M5 e o laboratório de simulação. Nenhum desses dados é simulado como medição real.</p>
+          <p class="section-note">Estados calculados pelo ESP32 e evidências disponíveis na última telemetria. Esta visão não reconstrói regras ou limiares que não tenham sido transmitidos.</p>
+          <p id="edge-fonte" class="section-note" role="status">Aguardando última leitura da estação…</p>
+          <div id="edge-evidencias" class="edge-evidencias" aria-live="polite"></div>
+          <details class="edge-metodo"><summary>O que estes indicadores explicam?</summary>
+            <p>Os estados e alertas abaixo são informados pelo ESP32. Temperatura, umidade, pressão, tendência e RSSI são evidências contemporâneas da última telemetria, mas não demonstram isoladamente a regra que determinou cada estado. A indicação de conectividade é calculada pela API a partir da idade do registro.</p>
+            <p>A documentação do firmware descreve classificações com histerese temporal: uma condição pode precisar persistir antes da mudança de estado. Para uma explicação causal auditável faltam, conforme o evento, os limiares ativos, a janela de cálculo, a duração de persistência, a variável disparadora e os registros de transição. Não inferimos esses dados a partir das leituras.</p>
+          </details>
+          <details class="edge-metodo edge-regras">
+            <summary>Critérios de classificação — firmware EXP04c3c2 confirmado</summary>
+            <p>Regras verificadas no pacote de firmware confirmado como instalado. Cada indicador pode ser consultado separadamente; os valores de estado continuam sendo informados pelo ESP32.</p>
+            <div class="edge-regras-grid">
+              <section class="edge-regra"><h3>Umidade</h3><p>&lt; 30%: muito seco; 30% a &lt; 40%: seco; 40% a 70%: faixa moderada; &gt; 70% a 80%: elevada; &gt; 80%: muito alta.</p></section>
+              <section class="edge-regra"><h3>Conforto</h3><p>Frio com temperatura DHT11 &lt; 18 °C; confortável com 20–26 °C e 40–60% UR; aceitável com 18–28 °C e 30–70% UR, quando não confortável; quente acima de 28 °C; demais condições fora da faixa ideal.</p><p><strong>Atenção:</strong> o valor de temperatura exibido no dashboard remoto vem do BMP180, não do DHT11 utilizado nesta classificação.</p></section>
+              <section class="edge-regra"><h3>Pressão</h3><p>Com menos de 15 amostras: formando histórico. Tendência &gt; +0,5 hPa/h: subindo; &lt; −0,5 hPa/h: em queda; entre −0,5 e +0,5 hPa/h, inclusive: estável.</p></section>
+              <section class="edge-regra"><h3>Instabilidade</h3><p>Após 15 amostras, soma um ponto por condição: tendência &lt; −0,5 hPa/h; tendência &lt; −1,0 hPa/h; umidade mais de 3 pontos percentuais acima da média de 15 min; temperatura DHT11 mais de 0,5 °C abaixo da média; umidade &gt; 70%. Até 1 ponto: baixa; 2: moderada; 3 ou mais: elevada.</p></section>
+              <section class="edge-regra"><h3>Anomalia</h3><p>Inclui salto anômalo, diferença absoluta entre temperaturas dos sensores &gt; 3 °C ou, após 5 amostras, desvios absolutos acima de 2,5 °C nas temperaturas, 12 pontos percentuais na umidade ou 2,0 hPa na pressão em relação às médias de 15 min.</p></section>
+              <section class="edge-regra"><h3>Estado geral</h3><p>Alerta se houver anomalia ou instabilidade elevada; atenção se houver alertas ou instabilidade moderada; caso contrário, estável.</p></section>
+            </div>
+            <p><strong>Histerese:</strong> 3 avaliações consecutivas para umidade, conforto, pressão e instabilidade; 2 para anomalia e estado geral. Avaliações não equivalem necessariamente a minutos.</p>
+            <p><strong>Limitação:</strong> os contadores de histerese, a temperatura DHT11 e variáveis intermediárias não são expostos nesta tela. As classificações não são recalculadas no navegador.</p>
+          </details>
+          <p class="section-note">Histórico de eventos, métricas M1–M5 e laboratório de simulação permanecem planejados.</p>
         </section>
       </div>
 

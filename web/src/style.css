@@ -315,3 +315,27 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .lag-hour,.lag-value,.lag-count { font-variant-numeric:tabular-nums; }
 .lag-count { color:var(--muted); text-align:right; }
 @media(max-width:480px) { .lag-row { grid-template-columns:30px minmax(0,1fr) 40px 43px; gap:4px; font-size:.75rem; } .lag-axis { padding:0 49px 0 34px; } }
+
+/* PR #8: leitura transparente das classificações enviadas pelo Edge. */
+.edge-evidencias { display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:12px; margin:16px 0; }
+.edge-indicador { min-width:0; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--surface); display:flex; flex-direction:column; gap:9px; }
+.edge-indicador-nome { color:var(--muted); font-size:.88rem; }
+.edge-indicador strong { font-size:1.1rem; overflow-wrap:anywhere; }
+.edge-indicador small { color:var(--muted); }
+.edge-metodo { border:1px solid var(--border); border-radius:12px; padding:14px 18px; }
+.edge-metodo summary { cursor:pointer; font-weight:650; }
+.edge-metodo p { margin:12px 0 0; }
+
+/* PR #8: uniformize disclosure and improve contextual reading. */
+.edge-metodo { margin-top:12px; }
+.edge-metodo summary { display:list-item; list-style:disclosure-closed inside; border:0; outline-offset:4px; text-decoration:none; }
+.edge-metodo[open] summary { list-style-type:disclosure-open; }
+.edge-metodo summary::marker { color:var(--muted); }
+.edge-metodo summary:focus-visible { outline:2px solid currentColor; border-radius:4px; }
+.edge-metodo ul { padding-left:24px; }
+.edge-regras-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:16px; }
+.edge-regra { border:1px solid var(--border); border-radius:10px; padding:14px; min-width:0; }
+.edge-regra h3 { font-size:1rem; margin:0 0 8px; }
+.edge-regra p { margin:0 0 8px; line-height:1.55; }
+.edge-regra p:last-child { margin-bottom:0; }
+.edge-indicador-contexto { border-top:1px solid var(--border); margin:3px 0 0; padding-top:10px; font-size:.83rem; line-height:1.45; color:var(--muted); }
