@@ -56,6 +56,7 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 @media(max-width:560px){.container{width:min(100% - 20px,1240px);padding-top:24px}.section{padding:18px}.cards-now{grid-template-columns:1fr 1fr}.metric-card{padding:14px}.metric-card strong{font-size:1rem}.period-selector{width:100%}.period-button{flex:1 1 auto}.custom-period{align-items:stretch}.custom-period label,.custom-period button{width:100%}.station-identity{display:grid;gap:6px}.hero-actions{width:100%}.connection-pill,.theme-toggle{flex:1;justify-content:center}}
 
 
+.contextual-card .stat-line strong { text-align:right; }
 .quality-value { display:block; margin-top:10px; font-size:1.2rem; font-weight:700; overflow-wrap:anywhere; }
 .quality-caption { margin:8px 0 0; color:var(--muted); font-size:.8rem; line-height:1.45; }
 
