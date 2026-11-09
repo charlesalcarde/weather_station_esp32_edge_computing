@@ -913,7 +913,7 @@ function definirInputsPadrao() {
 
 async function selecionarPeriodo(tipo) {
   $("#erro-periodo").textContent="";
-  $$(".period-button").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
+  $(".period-button[data-periodo]").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
   if(tipo==="personalizado") { $("#custom-period").classList.remove("hidden"); return; }
   $("#custom-period").classList.add("hidden");
   if(tipo==="mes") {
