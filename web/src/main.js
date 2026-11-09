@@ -753,6 +753,70 @@ function renderM5(h) {
   original.spanGaps=false;
   criarChart("m5-chart",idx.map(i=>labels[i]),[original,periodica,hibrida]);
 }
+let evidenciasParecer = null;
+let historicoParecer = null;
+function prepararEvidenciasParecer(h,r) {
+  const dados=Array.isArray(h?.dados)?h.dados:[];
+  const variaveis=[
+    ["temperatura","externo_temperatura","°C"],
+    ["umidade","externo_umidade","%"],
+    ["pressao_mar","externo_pressao_mar","hPa"]
+  ];
+  const relacoes={};
+  for(const [local,externo,unidade] of variaveis){
+    const pares=dados.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo]));
+    const n=pares.length;
+    let correlacao=null,diferencaMedia=null;
+    if(n){
+      const ml=pares.reduce((a,p)=>a+p[local],0)/n,me=pares.reduce((a,p)=>a+p[externo],0)/n;
+      diferencaMedia=ml-me;
+      const vl=pares.reduce((a,p)=>a+(p[local]-ml)**2,0),ve=pares.reduce((a,p)=>a+(p[externo]-me)**2,0);
+      if(n>=3&&vl>0&&ve>0)correlacao=pares.reduce((a,p)=>a+(p[local]-ml)*(p[externo]-me),0)/Math.sqrt(vl*ve);
+    }
+    relacoes[local]={unidade,pares_validos:n,correlacao_pearson:correlacao,diferenca_media_local_menos_externo:diferencaMedia};
+  }
+  const blocos={};
+  for(const c of ["temperatura","umidade","pressao_mar","ponto_orvalho"]){
+    const x=r?.[c];blocos[c]=x?{minimo:x.min,media:x.media,maximo:x.max,amplitude:x.amplitude}:null;
+  }
+  return {
+    schema:"parecer-evidencias-v1",origem:"dados_agregados_e_resumo_backend",
+    estacao:h?.estacao||r?.estacao||null,periodo:h?.periodo||r?.periodo||null,
+    resolucao:h?.resolucao||null,intervalo_minutos:h?.intervalo_minutos||null,
+    amostras_brutas_informadas:h?.amostras_brutas??null,pontos_agregados_recebidos:dados.length,
+    qualidade_dados:r?.qualidade_dados??null,estatisticas_locais:blocos,
+    relacoes_local_externo:relacoes,
+    limitacoes:[
+      "Correlacao nao implica causalidade.",
+      "Pares calculados sobre pontos agregados, nao observacoes independentes.",
+      "Cobertura de pontos recebidos nao equivale a cobertura temporal sem inspecionar lacunas.",
+      "Sem perfil de uso e requisitos ambientais, nao avaliar conformidade normativa.",
+      "Nao inferir qualidade do ar, ocupacao ou ventilacao sem sensores adequados."
+    ]
+  };
+}
+function renderEvidenciasParecer(h,r) {
+  const alvo=$("#parecer-evidencias"),periodo=$("#parecer-periodo");
+  if(!alvo||!periodo)return;
+  evidenciasParecer=prepararEvidenciasParecer(h,r);
+  const ev=evidenciasParecer;
+  periodo.textContent="Estação "+(ev.estacao||"não informada")+" • "+filtroAtual.rotulo+" • resolução "+(ev.resolucao||"—")+" • "+ev.pontos_agregados_recebidos+" pontos agregados.";
+  alvo.replaceChildren();
+  const itens=[
+    ["Temperatura média",ev.estatisticas_locais.temperatura?.media,"°C"],
+    ["Umidade média",ev.estatisticas_locais.umidade?.media,"%"],
+    ["Pressão média (nível do mar)",ev.estatisticas_locais.pressao_mar?.media,"hPa"],
+    ["Pares válidos temperatura",ev.relacoes_local_externo.temperatura.pares_validos,""],
+    ["Correlação temperatura",ev.relacoes_local_externo.temperatura.correlacao_pearson,""],
+    ["Correlação umidade",ev.relacoes_local_externo.umidade.correlacao_pearson,""]
+  ];
+  for(const [rotulo,valor,unidade] of itens){
+    const card=document.createElement("article");card.className="edge-indicador";
+    const nome=document.createElement("span");nome.className="edge-indicador-nome";nome.textContent=rotulo;
+    const numero=document.createElement("strong");numero.textContent=Number.isFinite(valor)?fmtNumero(valor,unidade?1:3)+(unidade?" "+unidade:""):"—";
+    card.append(nome,numero);alvo.appendChild(card);
+  }
+}
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -795,7 +859,7 @@ async function carregarHistoricoEResumo() {
   const [h,r]=await Promise.all([rh.json(),rr.json()]);
   if(!rh.ok) throw new Error(h.mensagem||`Histórico HTTP ${rh.status}`);
   if(!rr.ok) throw new Error(r.mensagem||`Resumo HTTP ${rr.status}`);
-  renderHistorico(h); renderResumo(r);
+  renderHistorico(h); renderResumo(r); renderEvidenciasParecer(h,r);
 }
 
 function definirInputsPadrao() {
@@ -898,6 +962,11 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
+$("#parecer-copiar")?.addEventListener("click",async()=>{
+  if(!evidenciasParecer)return;
+  try{await navigator.clipboard.writeText(JSON.stringify(evidenciasParecer,null,2));$("#parecer-periodo").textContent="Evidências copiadas. Período: "+filtroAtual.rotulo;}
+  catch(e){console.error("[parecer/copia]",e);$("#parecer-periodo").textContent="Não foi possível copiar automaticamente. Verifique as permissões do navegador.";}
+});
 $("#theme-toggle").addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 $("#atualizar-agora").addEventListener("click", async () => {
   const b = $("#atualizar-agora");
