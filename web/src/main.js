@@ -130,6 +130,11 @@ const INFO = {
     title: "Δ Estação − Open-Meteo",
     body: `<p>O delta mostra a diferença entre a medição/valor da estação e a referência externa da Open-Meteo. Um valor positivo significa que a estação está acima da referência; um valor negativo, abaixo.</p><p>Essa diferença é especialmente útil porque a estação encontra-se em um microambiente local que pode responder de forma diferente das condições externas.</p>`
   },
+  "resposta-dinamica": {
+    eyebrow: "Dinâmica ambiental",
+    title: "Defasagem e variabilidade local × externa",
+    body: `<p>Para evitar tratar valores horários repetidos como observações independentes, a análise utiliza médias diárias em UTC ou agregados diários fornecidos pela API para janelas acima de 31 dias. Apenas dias completos, com cobertura de pelo menos 75% dos intervalos históricos e dados de ambas as fontes, são aceitos.</p><p>A defasagem é o deslocamento em dias que maximiza a correlação positiva entre as séries, testando de 0 a 3 dias de atraso local. É uma associação exploratória, não uma medida causal do tempo de resposta. O indicador só é exibido com pelo menos 8 pares de dias, variabilidade suficiente e melhoria de correlação de pelo menos 0,10 sobre o atraso zero, comparando os mesmos dias para cada atraso.</p><p>A razão de variabilidade é o desvio-padrão das médias diárias locais dividido pelo desvio-padrão das médias diárias externas, sem deslocamento. Valores inferiores a 1 indicam menor variabilidade diária local, mas não provam atenuação física de uma oscilação específica. A umidade relativa depende da temperatura; para conclusões sobre transporte de vapor, avaliar também umidade absoluta ou ponto de orvalho.</p>`
+  },
   "analise-contextual": {
     eyebrow: "Análise científica",
     title: "Relação local × referência externa",
@@ -437,6 +442,74 @@ function renderAnaliseContextual(h) {
   }).join("");
 }
 
+function renderRespostaDinamica(h) {
+  const alvo = $("#cards-dinamica");
+  if (!alvo) return;
+  const inicio = Date.parse(h.periodo?.inicio), fim = Date.parse(h.periodo?.fim);
+  const passoMs = Number(h.intervalo_minutos) * 60000;
+  const diaMs = 86400000;
+  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || !Number.isFinite(passoMs) || passoMs <= 0 || passoMs > diaMs) {
+    alvo.textContent = "Resolução ou período indisponível para análise diária.";
+    return;
+  }
+  const primeiroDia = Math.ceil(inicio / diaMs), ultimoDia = Math.floor(fim / diaMs) - 1;
+  const dias = new Map();
+  for (const p of (Array.isArray(h.dados) ? h.dados : [])) {
+    const ts = Date.parse(p.timestamp);
+    if (!Number.isFinite(ts)) continue;
+    const d = Math.floor(ts / diaMs);
+    if (d < primeiroDia || d > ultimoDia) continue;
+    if (!dias.has(d)) dias.set(d, []);
+    dias.get(d).push(p);
+  }
+  const esperadoDia = Math.round(diaMs / passoMs);
+  const variaveis = [
+    ["Temperatura", "temperatura", "externo_temperatura"],
+    ["Umidade relativa", "umidade", "externo_umidade"]
+  ];
+  const estatisticas = (pares) => {
+    const n = pares.length;
+    if (n < 8) return null;
+    const ml = pares.reduce((s,p)=>s+p[0],0)/n, me = pares.reduce((s,p)=>s+p[1],0)/n;
+    let vl=0,ve=0,cov=0;
+    for(const [l,e] of pares){const dl=l-ml,de=e-me;vl+=dl*dl;ve+=de*de;cov+=dl*de;}
+    if(vl/n < 1e-6 || ve/n < 1e-6) return null;
+    return {r:cov/Math.sqrt(vl*ve),ratio:Math.sqrt(vl/ve),n};
+  };
+  const cards = variaveis.map(([titulo,lKey,eKey]) => {
+    const series = new Map();
+    for (const [dia,pontos] of dias) {
+      const validos = pontos.filter(p => Number.isFinite(p[lKey]) && Number.isFinite(p[eKey]));
+      const cobertura = validos.length / esperadoDia;
+      if (cobertura < 0.75) continue;
+      series.set(dia,[
+        validos.reduce((s,p)=>s+p[lKey],0)/validos.length,
+        validos.reduce((s,p)=>s+p[eKey],0)/validos.length
+      ]);
+    }
+    const pares = [...series.values()];
+    const base = estatisticas(pares);
+    let melhor = null;
+    if (base && series.size >= 10) {
+      for (let atraso=1;atraso<=3;atraso++) {
+        const alinhados=[], comparacaoZero=[];
+        for (const [dia,local] of series) {
+          const anterior=series.get(dia-atraso);
+          if (anterior) { alinhados.push([local[0],anterior[1]]); comparacaoZero.push([local[0],local[1]]); }
+        }
+        if (alinhados.length < 8 || alinhados.length < Math.ceil(series.size*0.7)) continue;
+        const e=estatisticas(alinhados), zero=estatisticas(comparacaoZero);
+        if (e && zero && e.r > zero.r+0.10 && (!melhor || e.r-zero.r > melhor.ganho)) melhor={...e,atraso,ganho:e.r-zero.r,rZeroComparavel:zero.r};
+      }
+    }
+    const atrasoTexto = !base ? "Não estimável" : melhor ? `${melhor.atraso} dia(s)` : "Não evidenciada";
+    const razaoTexto = base ? fmtNumero(base.ratio,2) : "Não estimável";
+    const descricao = !base ? "Exige ≥8 dias completos válidos e variabilidade suficiente." : melhor ? `Correlação alinhada: ${fmtNumero(melhor.r,2)} (n=${melhor.n} dias); sem atraso nos mesmos dias: ${fmtNumero(melhor.rZeroComparavel,2)}.` : `Sem evidência de atraso de 1–3 dias pelo critério adotado; r(0)=${fmtNumero(base.r,2)}.`;
+    return `<article class="summary-card contextual-card"><h3>${titulo}</h3><div class="stat-line"><span>Atraso local estimado</span><strong>${atrasoTexto}</strong></div><div class="stat-line"><span>Razão de variabilidade diária</span><strong>${razaoTexto}</strong></div><div class="stat-line"><span>Dias válidos</span><strong>${series.size}</strong></div><p class="quality-caption">${descricao}</p></article>`;
+  });
+  alvo.innerHTML=cards.join("");
+}
+
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -456,6 +529,7 @@ function renderHistorico(h) {
   aplicarVisibilidadeGlobal();
   renderQualidadeTemporal(h);
   renderAnaliseContextual(h);
+  renderRespostaDinamica(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
