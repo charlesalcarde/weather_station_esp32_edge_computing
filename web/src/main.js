@@ -755,6 +755,41 @@ function renderM5(h) {
 }
 let evidenciasParecer = null;
 let historicoParecer = null;
+function qualidadeTemporalParecer(h) {
+  const inicio=Date.parse(h?.periodo?.inicio),fim=Date.parse(h?.periodo?.fim),passo=Number(h?.intervalo_minutos)*60000;
+  if(!Number.isFinite(inicio)||!Number.isFinite(fim)||fim<=inicio||!Number.isFinite(passo)||passo<=0)return {disponivel:false,motivo:"Intervalo ou resolução inválidos"};
+  const primeiro=Math.ceil(inicio/passo),ultimo=Math.floor(fim/passo)-1,esperados=Math.max(0,ultimo-primeiro+1);
+  const presentes=new Set();
+  for(const p of h.dados||[]){const t=Date.parse(p.timestamp),i=Math.floor(t/passo);if(Number.isFinite(t)&&i>=primeiro&&i<=ultimo)presentes.add(i);}
+  const indices=[...presentes].sort((a,b)=>a-b);
+  let maior=0,anterior=primeiro-1;
+  for(const i of indices){maior=Math.max(maior,i-anterior-1);anterior=i;}
+  if(esperados)maior=Math.max(maior,ultimo-anterior);
+  return {disponivel:esperados>0,intervalos_completos_esperados:esperados,intervalos_presentes:presentes.size,intervalos_ausentes:Math.max(0,esperados-presentes.size),cobertura_percentual:esperados?100*presentes.size/esperados:null,maior_lacuna_minutos:maior*passo/60000,criterio:"Apenas intervalos inteiramente contidos na janela; presença não garante validade de todas as variáveis"};
+}
+function variabilidadeParecer(pares) {
+  const n=pares.length;if(n<3)return {disponivel:false,motivo:"Menos de 3 pares"};
+  const ml=pares.reduce((a,p)=>a+p[0],0)/n,me=pares.reduce((a,p)=>a+p[1],0)/n;
+  const vl=pares.reduce((a,p)=>a+(p[0]-ml)**2,0),ve=pares.reduce((a,p)=>a+(p[1]-me)**2,0);
+  if(vl/n<1e-6||ve/n<1e-6)return {disponivel:false,motivo:"Variância insuficiente"};
+  return {disponivel:true,pares_validos:n,razao_desvios_padrao_local_externo:Math.sqrt(vl/ve),criterio:"Desvios padrão dos pares agregados alinhados; não é atenuação causal"};
+}
+function defasagemHorariaParecer(h,local,externo) {
+  const inicio=Date.parse(h?.periodo?.inicio),fim=Date.parse(h?.periodo?.fim),passo=Number(h?.intervalo_minutos)*60000,hora=3600000;
+  const indisponivel=motivo=>({disponivel:false,motivo});
+  if(!Number.isFinite(inicio)||!Number.isFinite(fim)||!Number.isFinite(passo)||passo<=0||passo>hora)return indisponivel("Resolução não permite análise horária");
+  const primeiro=Math.ceil(inicio/hora),ultimo=Math.floor(fim/hora)-1,esperados=Math.round(hora/passo),grupos=new Map();
+  for(const p of h.dados||[]){const t=Date.parse(p.timestamp);if(!Number.isFinite(t))continue;const i=Math.floor(t/hora);if(i<primeiro||i>ultimo)continue;if(!grupos.has(i))grupos.set(i,[]);grupos.get(i).push(p);}
+  const medias=new Map();
+  for(const [i,pontos] of grupos){const validos=pontos.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo]));if(validos.length<Math.ceil(esperados*.75))continue;medias.set(i,[validos.reduce((a,p)=>a+p[local],0)/validos.length,validos.reduce((a,p)=>a+p[externo],0)/validos.length]);}
+  const mudancas=new Map();
+  for(const [i,v] of medias){const anterior=medias.get(i-1);if(anterior)mudancas.set(i,[v[0]-anterior[0],v[1]-anterior[1]]);}
+  function estatistica(pares){if(pares.length<18)return null;const n=pares.length,ml=pares.reduce((a,p)=>a+p[0],0)/n,me=pares.reduce((a,p)=>a+p[1],0)/n;let vl=0,ve=0,cov=0;for(const p of pares){const a=p[0]-ml,b=p[1]-me;vl+=a*a;ve+=b*b;cov+=a*b;}return vl/n>=1e-6&&ve/n>=1e-6?{r:cov/Math.sqrt(vl*ve),n,razao_variabilidade:Math.sqrt(vl/ve)}:null;}
+  const base=estatistica([...mudancas.values()]);if(!base)return indisponivel("Menos de 18 mudanças horárias válidas ou variância insuficiente");
+  let melhor=null;const curva=[{atraso_horas:0,correlacao:base.r,pares:base.n}];
+  for(let atraso=1;atraso<=6;atraso++){const pares=[],controle=[];for(const [i,v] of mudancas){const e=mudancas.get(i-atraso);if(!e)continue;pares.push([v[0],e[1]]);controle.push([v[0],v[1]]);}if(pares.length<18||pares.length<Math.ceil(mudancas.size*.7))continue;const atual=estatistica(pares),zero=estatistica(controle);curva.push({atraso_horas:atraso,correlacao:atual?.r??null,pares:pares.length});if(atual&&zero&&atual.r>zero.r+.10&&(!melhor||atual.r-zero.r>melhor.ganho))melhor={atraso_horas:atraso,correlacao:atual.r,correlacao_zero_comparavel:zero.r,ganho:atual.r-zero.r,pares:atual.n};}
+  return {disponivel:true,mudancas_horarias_validas:mudancas.size,razao_variabilidade_mudancas:base.razao_variabilidade,correlacao_sem_atraso:base.r,defasagem_evidenciada:!!melhor,melhor_defasagem:melhor,curva,criterio:"Mudanças entre horas consecutivas, cobertura horária >=75%, mínimo 18 pares e ganho de correlação >0,10 frente ao atraso zero no mesmo subconjunto; exploratório, não é tempo físico de resposta"};
+}
 function prepararEvidenciasParecer(h,r) {
   const dados=Array.isArray(h?.dados)?h.dados:[];
   const variaveis=[
@@ -777,19 +812,23 @@ function prepararEvidenciasParecer(h,r) {
   }
   const blocos={};
   for(const c of ["temperatura","umidade","pressao_mar","ponto_orvalho"]){
-    const x=r?.[c];blocos[c]=x?{minimo:x.min,media:x.media,maximo:x.max,amplitude:x.amplitude}:null;
+    const x=r?.[c];blocos[c]=x?{minimo:x.min??null,media:x.media??null,maximo:x.max??null,amplitude:Number.isFinite(x.amplitude)?x.amplitude:(Number.isFinite(x.max)&&Number.isFinite(x.min)?x.max-x.min:null)}:null;
   }
   return {
-    schema:"parecer-evidencias-v1",origem:"dados_agregados_e_resumo_backend",
+    schema:"parecer-evidencias-v2",origem:"dados_agregados_e_resumo_backend",
     estacao:h?.estacao||r?.estacao||null,periodo:h?.periodo||r?.periodo||null,
     resolucao:h?.resolucao||null,intervalo_minutos:h?.intervalo_minutos||null,
     amostras_brutas_informadas:h?.amostras_brutas??null,pontos_agregados_recebidos:dados.length,
-    qualidade_dados:r?.qualidade_dados??null,estatisticas_locais:blocos,
+    qualidade_dados:r?.qualidade_dados??null,qualidade_temporal:qualidadeTemporalParecer(h),estatisticas_locais:blocos,
     relacoes_local_externo:relacoes,
+    variabilidade_local_externo:Object.fromEntries(variaveis.map(([local,externo])=>[local,variabilidadeParecer(dados.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo])).map(p=>[p[local],p[externo]]))])),
+    resposta_subdiaria:{temperatura:defasagemHorariaParecer(h,"temperatura","externo_temperatura"),umidade:defasagemHorariaParecer(h,"umidade","externo_umidade")},
+    eventos_edge:{disponivel:false,motivo:"Histórico de eventos Edge não está disponível nesta API; não inferir eventos a partir dos dados agregados"},
     limitacoes:[
       "Correlacao nao implica causalidade.",
       "Pares calculados sobre pontos agregados, nao observacoes independentes.",
-      "Cobertura de pontos recebidos nao equivale a cobertura temporal sem inspecionar lacunas.",
+      "Cobertura temporal considera buckets completos; não garante presença de cada variável.",
+      "Defasagens horárias são exploratórias e não representam tempo físico de resposta.",
       "Sem perfil de uso e requisitos ambientais, nao avaliar conformidade normativa.",
       "Nao inferir qualidade do ar, ocupacao ou ventilacao sem sensores adequados."
     ]
