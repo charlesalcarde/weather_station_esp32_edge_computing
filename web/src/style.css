@@ -387,3 +387,9 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
   #parecer-resultado.parecer-relatorio {grid-template-columns:minmax(0,1fr);gap:12px;}
   .parecer-card {grid-column:1/-1;padding:16px;}
 }
+
+/* Parecer: navegação verificável para os gráficos da mesma janela. */
+.parecer-evidencias-links{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.85rem}
+.parecer-evidencias-links .period-button{white-space:normal;text-align:left;line-height:1.35}
+.parecer-card--evidencias{grid-column:1/-1}
+.chart-card:focus{outline:2px solid var(--accent,#60a5fa);outline-offset:3px}
