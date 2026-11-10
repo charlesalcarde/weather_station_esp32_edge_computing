@@ -1006,6 +1006,32 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
+function criarAtalhosEvidenciasParecer(alvo){
+  if(!evidenciasParecer)return;
+  const bloco=document.createElement("section");bloco.className="parecer-card parecer-card--evidencias";
+  const titulo=document.createElement("h3");titulo.textContent="Confira nos gráficos";bloco.appendChild(titulo);
+  const descricao=document.createElement("p");descricao.textContent="As curvas abaixo mostram as medições da estação e a referência externa no mesmo período deste parecer.";bloco.appendChild(descricao);
+  const navegacao=document.createElement("div");navegacao.className="parecer-evidencias-links";
+  const destinos=[
+    ["Temperatura local × externa","chart-temperatura","temperatura"],
+    ["Umidade local × externa","chart-umidade","umidade"],
+    ["Pressão local × externa","chart-pressao","pressao_mar"]
+  ];
+  for(const [rotulo,id,campo] of destinos){
+    if(!(evidenciasParecer.relacoes_local_externo?.[campo]?.pares_validos>0))continue;
+    const botao=document.createElement("button");botao.type="button";botao.className="period-button";
+    botao.textContent="Ver gráfico: "+rotulo;
+    botao.addEventListener("click",()=>{
+      const canvas=document.getElementById(id),cartao=canvas?.closest(".chart-card");
+      if(!cartao)return;
+      cartao.scrollIntoView({behavior:"smooth",block:"center"});
+      cartao.setAttribute("tabindex","-1");cartao.focus({preventScroll:true});
+    });
+    navegacao.appendChild(botao);
+  }
+  if(!navegacao.children.length)return;
+  bloco.appendChild(navegacao);alvo.appendChild(bloco);
+}
 function exibirParecerGerado(resultado){
   const alvo=$("#parecer-resultado");if(!alvo)return;
   alvo.classList.add("parecer-relatorio");
@@ -1028,6 +1054,7 @@ function exibirParecerGerado(resultado){
     }else{const p=document.createElement("p");p.textContent=conteudo;card.appendChild(p);}
     alvo.appendChild(card);
   }
+  criarAtalhosEvidenciasParecer(alvo);
 }
 $("#parecer-gerar")?.addEventListener("click",async()=>{
   const botao=$("#parecer-gerar"),status=$("#parecer-status");
