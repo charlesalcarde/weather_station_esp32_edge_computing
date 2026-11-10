@@ -1008,6 +1008,7 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
 }
 function exibirParecerGerado(resultado){
   const alvo=$("#parecer-resultado");if(!alvo)return;
+  alvo.classList.add("parecer-relatorio");
   alvo.replaceChildren();
   const campos=[
     ["Síntese do período",resultado.sintese,"parecer-card--sintese"],
