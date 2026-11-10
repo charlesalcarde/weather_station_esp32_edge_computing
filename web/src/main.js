@@ -661,7 +661,7 @@ function renderRespostaDinamica(h) {
 function renderM5(h) {
   const estado=$("#m5-estado"), saida=$("#m5-resultados"), tabela=$("#m5-comparacao");
   if (!estado || !saida || !tabela) return;
-  const resolucao=Number(h.intervalo_minutos), intervalo=Number($("#m5-intervalo").value);
+  const resolucao=1, intervalo=Number($("#m5-intervalo").value);
   const limiares={temperatura:Number($("#m5-dt").value),umidade:Number($("#m5-du").value),pressao_mar:Number($("#m5-dp").value)};
   const campos=["temperatura","umidade","pressao_mar"];
   saida.replaceChildren(); tabela.replaceChildren();
@@ -671,7 +671,7 @@ function renderM5(h) {
   const validos=(Array.isArray(h.dados)?h.dados:[]).map(p=>({...p,tempo:Date.parse(p.timestamp)}))
     .filter(p=>Number.isFinite(p.tempo)&&campos.some(c=>Number.isFinite(p[c]))).sort((a,b)=>a.tempo-b.tempo);
   const pontos=validos.filter((p,i)=>i===0||p.tempo!==validos[i-1].tempo);
-  if(pontos.length<3){estado.textContent="São necessários ao menos 3 pontos agregados válidos.";return;}
+  if(pontos.length<3){estado.textContent="São necessárias ao menos 3 leituras originais válidas.";return;}
   const segmentos=[];let segmento=[];
   for(const p of pontos){
     if(segmento.length && p.tempo-segmento[segmento.length-1].tempo>2*resolucao*60000){segmentos.push(segmento);segmento=[];}
@@ -717,7 +717,7 @@ function renderM5(h) {
     return {retidos,recon,erros,extremos};
   };
   const per=simular(false),hib=simular(true),total=pontos.length;
-  estado.textContent="Recorte: "+filtroAtual.rotulo+" • resolução "+(h.resolucao||"—")+" • "+segmentos.length+" segmento(s) • "+total+" pontos agregados elegíveis.";
+  estado.textContent="Recorte: "+filtroAtual.rotulo+" • série original (sem agregação) • "+segmentos.length+" segmento(s) • "+total+" leituras brutas elegíveis.";
   const f=(n,d=2)=>Number.isFinite(n)?fmtNumero(n,d):"—";
   const resumo=[
     ["Pontos selecionados",String(per.retidos.size),String(hib.retidos.size)],
@@ -752,6 +752,47 @@ function renderM5(h) {
   for(const d of [periodica,hibrida]){d.stepped=true;d.tension=0;d.spanGaps=false;}
   original.spanGaps=false;
   criarChart("m5-chart",idx.map(i=>labels[i]),[original,periodica,hibrida]);
+}
+let serieM5 = null;
+let serieM5Chave = "";
+let serieM5Token = 0;
+async function carregarSerieM5(h) {
+  const inicio=h?.periodo?.inicio, fim=h?.periodo?.fim;
+  const chave=inicio+"|"+fim;
+  const token=++serieM5Token;
+  const estado=$("#m5-estado");
+  if(!inicio||!fim){estado.textContent="Período M5 indisponível.";return;}
+  if(serieM5 && serieM5Chave===chave){renderM5(serieM5);return;}
+  serieM5=null;serieM5Chave="";
+  estado.textContent="Carregando todas as leituras originais para o Laboratório M5…";
+  try {
+    const dados=[];
+    let pagina=0;
+    while(true){
+      const q=new URLSearchParams({inicio,fim,pagina:String(pagina)});
+      const resposta=await fetch("/api/m5-serie?"+q,{cache:"no-store"});
+      if(!resposta.ok)throw new Error("HTTP "+resposta.status);
+      const lote=await resposta.json();
+      if(!Array.isArray(lote.dados)||lote.pagina!==pagina)throw new Error("Paginação M5 inválida");
+      dados.push(...lote.dados);
+      if(token!==serieM5Token)return;
+      estado.textContent="Carregando leituras originais: "+dados.length.toLocaleString("pt-BR")+"…";
+      if(lote.proxima_pagina===null)break;
+      if(lote.proxima_pagina!==pagina+1)throw new Error("Paginação M5 interrompida");
+      pagina++;
+    }
+    if(token!==serieM5Token)return;
+    serieM5={dados,intervalo_minutos:1,periodo:h.periodo};
+    serieM5Chave=chave;
+    renderM5(serieM5);
+  }catch(erro){
+    if(token!==serieM5Token)return;
+    console.error("[m5/serie-bruta]",erro);
+    estado.textContent="Não foi possível carregar a série bruta completa. Nenhuma redução M5 será estimada com pontos agregados.";
+    $("#m5-resultados").replaceChildren();
+    $("#m5-comparacao").replaceChildren();
+    if(charts["m5-chart"]){charts["m5-chart"].destroy();delete charts["m5-chart"];}
+  }
 }
 let evidenciasParecer = null;
 let historicoParecer = null;
@@ -882,7 +923,7 @@ function renderHistorico(h) {
   renderAnaliseContextual(h);
   renderRespostaDinamica(h);
   renderRespostaSubdiaria(h);
-  renderM5(h);
+  carregarSerieM5(h);
 }
 
 function statLine(rotulo, valor, unidade) { return `<div class="stat-line"><span>${rotulo}</span><strong>${valor}${unidade}</strong></div>`; }
@@ -1004,7 +1045,7 @@ function configurarNavegacao() {
 
 for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
-  el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
+  el.addEventListener("change",()=>{ if(serieM5) renderM5(serieM5); });
 }
 function criarAtalhosEvidenciasParecer(alvo){
   if(!evidenciasParecer)return;
