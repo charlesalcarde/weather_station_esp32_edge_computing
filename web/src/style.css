@@ -358,3 +358,32 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .m5-plot-controls label { display:flex; align-items:center; gap:10px; }
 .m5-plot-controls select { padding:8px; border:1px solid var(--border); border-radius:8px; color:inherit; background:var(--surface); }
 .m5-chart-wrap { height:300px; min-width:0; position:relative; margin-bottom:18px; }
+
+/* PR #10 — parecer em formato editorial, legível em telas grandes e pequenas. */
+#parecer-resultado.parecer-relatorio {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  margin-top:18px;
+  align-items:start;
+}
+.parecer-card {
+  min-width:0;
+  padding:clamp(16px,2vw,26px);
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface);
+  overflow-wrap:anywhere;
+}
+.parecer-card h3 {font-size:clamp(1.05rem,1.4vw,1.3rem);line-height:1.3;margin:0 0 12px;}
+.parecer-card p,.parecer-card li {font-size:1rem;line-height:1.7;}
+.parecer-card p {margin:0;}
+.parecer-card ul {margin:0;padding-left:1.3rem;}
+.parecer-card li+li {margin-top:10px;}
+.parecer-card--sintese,.parecer-card--interpretacao,.parecer-card--conclusao {grid-column:1/-1;}
+.parecer-card--sintese {border-left:4px solid var(--accent,#70a8ff);}
+.parecer-card--conclusao {border-top:2px solid var(--border);}
+@media(max-width:760px){
+  #parecer-resultado.parecer-relatorio {grid-template-columns:minmax(0,1fr);gap:12px;}
+  .parecer-card {grid-column:1/-1;padding:16px;}
+}
