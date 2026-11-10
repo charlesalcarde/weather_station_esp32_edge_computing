@@ -753,6 +753,114 @@ function renderM5(h) {
   original.spanGaps=false;
   criarChart("m5-chart",idx.map(i=>labels[i]),[original,periodica,hibrida]);
 }
+let evidenciasParecer = null;
+let historicoParecer = null;
+function qualidadeTemporalParecer(h) {
+  const inicio=Date.parse(h?.periodo?.inicio),fim=Date.parse(h?.periodo?.fim),passo=Number(h?.intervalo_minutos)*60000;
+  if(!Number.isFinite(inicio)||!Number.isFinite(fim)||fim<=inicio||!Number.isFinite(passo)||passo<=0)return {disponivel:false,motivo:"Intervalo ou resolução inválidos"};
+  const primeiro=Math.ceil(inicio/passo),ultimo=Math.floor(fim/passo)-1,esperados=Math.max(0,ultimo-primeiro+1);
+  const presentes=new Set();
+  for(const p of h.dados||[]){const t=Date.parse(p.timestamp),i=Math.floor(t/passo);if(Number.isFinite(t)&&i>=primeiro&&i<=ultimo)presentes.add(i);}
+  const indices=[...presentes].sort((a,b)=>a-b);
+  let maior=0,anterior=primeiro-1;
+  for(const i of indices){maior=Math.max(maior,i-anterior-1);anterior=i;}
+  if(esperados)maior=Math.max(maior,ultimo-anterior);
+  return {disponivel:esperados>0,intervalos_completos_esperados:esperados,intervalos_presentes:presentes.size,intervalos_ausentes:Math.max(0,esperados-presentes.size),cobertura_percentual:esperados?100*presentes.size/esperados:null,maior_lacuna_minutos:maior*passo/60000,criterio:"Apenas intervalos inteiramente contidos na janela; presença não garante validade de todas as variáveis"};
+}
+function variabilidadeParecer(pares) {
+  const n=pares.length;if(n<3)return {disponivel:false,motivo:"Menos de 3 pares"};
+  const ml=pares.reduce((a,p)=>a+p[0],0)/n,me=pares.reduce((a,p)=>a+p[1],0)/n;
+  const vl=pares.reduce((a,p)=>a+(p[0]-ml)**2,0),ve=pares.reduce((a,p)=>a+(p[1]-me)**2,0);
+  if(vl/n<1e-6||ve/n<1e-6)return {disponivel:false,motivo:"Variância insuficiente"};
+  return {disponivel:true,pares_validos:n,razao_desvios_padrao_local_externo:Math.sqrt(vl/ve),criterio:"Desvios padrão dos pares agregados alinhados; não é atenuação causal"};
+}
+function defasagemHorariaParecer(h,local,externo) {
+  const inicio=Date.parse(h?.periodo?.inicio),fim=Date.parse(h?.periodo?.fim),passo=Number(h?.intervalo_minutos)*60000,hora=3600000;
+  const indisponivel=motivo=>({disponivel:false,motivo});
+  if(!Number.isFinite(inicio)||!Number.isFinite(fim)||!Number.isFinite(passo)||passo<=0||passo>hora)return indisponivel("Resolução não permite análise horária");
+  const primeiro=Math.ceil(inicio/hora),ultimo=Math.floor(fim/hora)-1,esperados=Math.round(hora/passo),grupos=new Map();
+  for(const p of h.dados||[]){const t=Date.parse(p.timestamp);if(!Number.isFinite(t))continue;const i=Math.floor(t/hora);if(i<primeiro||i>ultimo)continue;if(!grupos.has(i))grupos.set(i,[]);grupos.get(i).push(p);}
+  const medias=new Map();
+  for(const [i,pontos] of grupos){const validos=pontos.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo]));if(validos.length<Math.ceil(esperados*.75))continue;medias.set(i,[validos.reduce((a,p)=>a+p[local],0)/validos.length,validos.reduce((a,p)=>a+p[externo],0)/validos.length]);}
+  const mudancas=new Map();
+  for(const [i,v] of medias){const anterior=medias.get(i-1);if(anterior)mudancas.set(i,[v[0]-anterior[0],v[1]-anterior[1]]);}
+  function estatistica(pares){if(pares.length<18)return null;const n=pares.length,ml=pares.reduce((a,p)=>a+p[0],0)/n,me=pares.reduce((a,p)=>a+p[1],0)/n;let vl=0,ve=0,cov=0;for(const p of pares){const a=p[0]-ml,b=p[1]-me;vl+=a*a;ve+=b*b;cov+=a*b;}return vl/n>=1e-6&&ve/n>=1e-6?{r:cov/Math.sqrt(vl*ve),n,razao_variabilidade:Math.sqrt(vl/ve)}:null;}
+  const base=estatistica([...mudancas.values()]);if(!base)return indisponivel("Menos de 18 mudanças horárias válidas ou variância insuficiente");
+  let melhor=null;const curva=[{atraso_horas:0,correlacao:base.r,pares:base.n}];
+  for(let atraso=1;atraso<=6;atraso++){const pares=[],controle=[];for(const [i,v] of mudancas){const e=mudancas.get(i-atraso);if(!e)continue;pares.push([v[0],e[1]]);controle.push([v[0],v[1]]);}if(pares.length<18||pares.length<Math.ceil(mudancas.size*.7))continue;const atual=estatistica(pares),zero=estatistica(controle);curva.push({atraso_horas:atraso,correlacao:atual?.r??null,pares:pares.length});if(atual&&zero&&atual.r>zero.r+.10&&(!melhor||atual.r-zero.r>melhor.ganho))melhor={atraso_horas:atraso,correlacao:atual.r,correlacao_zero_comparavel:zero.r,ganho:atual.r-zero.r,pares:atual.n};}
+  return {disponivel:true,mudancas_horarias_validas:mudancas.size,razao_variabilidade_mudancas:base.razao_variabilidade,correlacao_sem_atraso:base.r,defasagem_evidenciada:!!melhor,melhor_defasagem:melhor,curva,criterio:"Mudanças entre horas consecutivas, cobertura horária >=75%, mínimo 18 pares e ganho de correlação >0,10 frente ao atraso zero no mesmo subconjunto; exploratório, não é tempo físico de resposta"};
+}
+function prepararEvidenciasParecer(h,r) {
+  const dados=Array.isArray(h?.dados)?h.dados:[];
+  const variaveis=[
+    ["temperatura","externo_temperatura","°C"],
+    ["umidade","externo_umidade","%"],
+    ["pressao_mar","externo_pressao_mar","hPa"]
+  ];
+  const relacoes={};
+  for(const [local,externo,unidade] of variaveis){
+    const pares=dados.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo]));
+    const n=pares.length;
+    let correlacao=null,diferencaMedia=null;
+    if(n){
+      const ml=pares.reduce((a,p)=>a+p[local],0)/n,me=pares.reduce((a,p)=>a+p[externo],0)/n;
+      diferencaMedia=ml-me;
+      const vl=pares.reduce((a,p)=>a+(p[local]-ml)**2,0),ve=pares.reduce((a,p)=>a+(p[externo]-me)**2,0);
+      if(n>=3&&vl>0&&ve>0)correlacao=pares.reduce((a,p)=>a+(p[local]-ml)*(p[externo]-me),0)/Math.sqrt(vl*ve);
+    }
+    relacoes[local]={unidade,pares_validos:n,correlacao_pearson:correlacao,diferenca_media_local_menos_externo:diferencaMedia};
+  }
+  const blocos={};
+  for(const c of ["temperatura","umidade","pressao_mar","ponto_orvalho"]){
+    const x=r?.[c];blocos[c]=x?{minimo:x.min??null,media:x.media??null,maximo:x.max??null,amplitude:Number.isFinite(x.amplitude)?x.amplitude:(Number.isFinite(x.max)&&Number.isFinite(x.min)?x.max-x.min:null)}:null;
+  }
+  return {
+    schema:"parecer-evidencias-v2",origem:"dados_agregados_e_resumo_backend",
+    estacao:h?.estacao||r?.estacao||null,periodo:h?.periodo||r?.periodo||null,
+    resolucao:h?.resolucao||null,intervalo_minutos:h?.intervalo_minutos||null,
+    amostras_brutas_informadas:h?.amostras_brutas??null,pontos_agregados_recebidos:dados.length,
+    qualidade_dados:r?.qualidade_dados??null,qualidade_temporal:qualidadeTemporalParecer(h),estatisticas_locais:blocos,
+    relacoes_local_externo:relacoes,
+    variabilidade_local_externo:Object.fromEntries(variaveis.map(([local,externo])=>[local,variabilidadeParecer(dados.filter(p=>Number.isFinite(p[local])&&Number.isFinite(p[externo])).map(p=>[p[local],p[externo]]))])),
+    resposta_subdiaria:{temperatura:defasagemHorariaParecer(h,"temperatura","externo_temperatura"),umidade:defasagemHorariaParecer(h,"umidade","externo_umidade")},
+    eventos_edge:{disponivel:false,motivo:"Histórico de eventos Edge não está disponível nesta API; não inferir eventos a partir dos dados agregados"},
+    limitacoes:[
+      "Correlacao nao implica causalidade.",
+      "Pares calculados sobre pontos agregados, nao observacoes independentes.",
+      "Cobertura temporal considera buckets completos; não garante presença de cada variável.",
+      "Defasagens horárias são exploratórias e não representam tempo físico de resposta.",
+      "Sem perfil de uso e requisitos ambientais, nao avaliar conformidade normativa.",
+      "Nao inferir qualidade do ar, ocupacao ou ventilacao sem sensores adequados."
+    ]
+  };
+}
+function renderEvidenciasParecer(h,r) {
+  const alvo=$("#parecer-evidencias"),periodo=$("#parecer-periodo");
+  if(!alvo||!periodo)return;
+  const anteriores=JSON.stringify(evidenciasParecer);
+  evidenciasParecer=prepararEvidenciasParecer(h,r);
+  if(anteriores!==JSON.stringify(evidenciasParecer)){
+    $("#parecer-resultado")?.replaceChildren();
+    if($("#parecer-status"))$("#parecer-status").textContent="Dados atualizados. Gere um novo parecer para este período.";
+  }
+  const ev=evidenciasParecer;
+  periodo.textContent="Estação "+(ev.estacao||"não informada")+" • "+filtroAtual.rotulo+" • resolução "+(ev.resolucao||"—")+" • "+ev.pontos_agregados_recebidos+" pontos agregados.";
+  alvo.replaceChildren();
+  const itens=[
+    ["Temperatura média",ev.estatisticas_locais.temperatura?.media,"°C"],
+    ["Umidade média",ev.estatisticas_locais.umidade?.media,"%"],
+    ["Pressão média (nível do mar)",ev.estatisticas_locais.pressao_mar?.media,"hPa"],
+    ["Pares válidos temperatura",ev.relacoes_local_externo.temperatura.pares_validos,""],
+    ["Correlação temperatura",ev.relacoes_local_externo.temperatura.correlacao_pearson,""],
+    ["Correlação umidade",ev.relacoes_local_externo.umidade.correlacao_pearson,""]
+  ];
+  for(const [rotulo,valor,unidade] of itens){
+    const card=document.createElement("article");card.className="edge-indicador";
+    const nome=document.createElement("span");nome.className="edge-indicador-nome";nome.textContent=rotulo;
+    const numero=document.createElement("strong");const casas=unidade?1:(rotulo.startsWith("Pares válidos")?0:3);numero.textContent=Number.isFinite(valor)?fmtNumero(valor,casas)+(unidade?" "+unidade:""):"—";
+    card.append(nome,numero);alvo.appendChild(card);
+  }
+}
 function renderHistorico(h) {
   ultimoHistorico = h;
   const d = Array.isArray(h.dados) ? h.dados : [];
@@ -795,7 +903,7 @@ async function carregarHistoricoEResumo() {
   const [h,r]=await Promise.all([rh.json(),rr.json()]);
   if(!rh.ok) throw new Error(h.mensagem||`Histórico HTTP ${rh.status}`);
   if(!rr.ok) throw new Error(r.mensagem||`Resumo HTTP ${rr.status}`);
-  renderHistorico(h); renderResumo(r);
+  renderHistorico(h); renderResumo(r); renderEvidenciasParecer(h,r);
 }
 
 function definirInputsPadrao() {
@@ -805,7 +913,7 @@ function definirInputsPadrao() {
 
 async function selecionarPeriodo(tipo) {
   $("#erro-periodo").textContent="";
-  $$(".period-button").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
+  $$(".period-button[data-periodo]").forEach(b=>b.classList.toggle("active",b.dataset.periodo===tipo));
   if(tipo==="personalizado") { $("#custom-period").classList.remove("hidden"); return; }
   $("#custom-period").classList.add("hidden");
   if(tipo==="mes") {
@@ -898,6 +1006,49 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   const el=$("#"+id);
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
+function exibirParecerGerado(resultado){
+  const alvo=$("#parecer-resultado");if(!alvo)return;
+  alvo.classList.add("parecer-relatorio");
+  alvo.replaceChildren();
+  const campos=[
+    ["Síntese do período",resultado.sintese,"parecer-card--sintese"],
+    ["O que os dados mostram",resultado.observacoes,"parecer-card--observacoes"],
+    ["Como interpretar",resultado.interpretacao_contextual,"parecer-card--interpretacao"],
+    ["Cuidados na interpretação",resultado.limitacoes,"parecer-card--limitacoes"],
+    ["Próximos passos sugeridos",resultado.recomendacoes,"parecer-card--recomendacoes"],
+    ["Conclusão",resultado.conclusao,"parecer-card--conclusao"]
+  ];
+  for(const [titulo,conteudo,classe] of campos){
+    const card=document.createElement("section");card.className="parecer-card "+classe;
+    const h=document.createElement("h3");h.textContent=titulo;card.appendChild(h);
+    if(Array.isArray(conteudo)){
+      const ul=document.createElement("ul");
+      for(const item of conteudo){const li=document.createElement("li");li.textContent=item;ul.appendChild(li);}
+      card.appendChild(ul);
+    }else{const p=document.createElement("p");p.textContent=conteudo;card.appendChild(p);}
+    alvo.appendChild(card);
+  }
+}
+$("#parecer-gerar")?.addEventListener("click",async()=>{
+  const botao=$("#parecer-gerar"),status=$("#parecer-status");
+  if(!evidenciasParecer){status.textContent="Aguarde o carregamento dos dados.";return;}
+  const snapshot=JSON.stringify(evidenciasParecer);
+  botao.disabled=true;status.textContent="Gerando parecer com IA…";
+  try{
+    const resposta=await fetch("/api/parecer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({evidencias:JSON.parse(snapshot)})});
+    const dados=await resposta.json();
+    if(!resposta.ok)throw new Error(dados.mensagem||"Falha ao gerar parecer.");
+    if(JSON.stringify(evidenciasParecer)!==snapshot){status.textContent="O período mudou durante a geração. Gere novamente.";return;}
+    exibirParecerGerado(dados.parecer);
+    status.textContent="Parecer gerado em "+new Date(dados.gerado_em).toLocaleString("pt-BR")+" • modelo "+dados.modelo+". Interpretação automatizada; não substitui avaliação técnica.";
+  }catch(e){status.textContent=e.message||"Não foi possível gerar o parecer.";}
+  finally{botao.disabled=false;}
+});
+$("#parecer-copiar")?.addEventListener("click",async()=>{
+  if(!evidenciasParecer)return;
+  try{await navigator.clipboard.writeText(JSON.stringify(evidenciasParecer,null,2));$("#parecer-periodo").textContent="Evidências copiadas. Período: "+filtroAtual.rotulo;}
+  catch(e){console.error("[parecer/copia]",e);$("#parecer-periodo").textContent="Não foi possível copiar automaticamente. Verifique as permissões do navegador.";}
+});
 $("#theme-toggle").addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 $("#atualizar-agora").addEventListener("click", async () => {
   const b = $("#atualizar-agora");
@@ -905,7 +1056,7 @@ $("#atualizar-agora").addEventListener("click", async () => {
   try { await carregarAgora(); segundosParaAtualizar = INTERVALO_AGORA_S; }
   finally { atualizandoAgora = false; b.disabled = false; atualizarContador(); }
 });
-$$(".period-button").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
+$$(".period-button[data-periodo]").forEach(b=>b.addEventListener("click",()=>selecionarPeriodo(b.dataset.periodo)));
 $("#serie-estacao").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#serie-openmeteo").addEventListener("change",aplicarVisibilidadeGlobal);
 $("#aplicar-periodo").addEventListener("click",async()=>{
