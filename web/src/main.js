@@ -857,7 +857,7 @@ function renderEvidenciasParecer(h,r) {
   for(const [rotulo,valor,unidade] of itens){
     const card=document.createElement("article");card.className="edge-indicador";
     const nome=document.createElement("span");nome.className="edge-indicador-nome";nome.textContent=rotulo;
-    const numero=document.createElement("strong");numero.textContent=Number.isFinite(valor)?fmtNumero(valor,unidade?1:3)+(unidade?" "+unidade:""):"—";
+    const numero=document.createElement("strong");const casas=unidade?1:(rotulo.startsWith("Pares válidos")?0:3);numero.textContent=Number.isFinite(valor)?fmtNumero(valor,casas)+(unidade?" "+unidade:""):"—";
     card.append(nome,numero);alvo.appendChild(card);
   }
 }
@@ -1007,13 +1007,24 @@ for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {
   el.addEventListener("change",()=>{ if(ultimoHistorico) renderM5(ultimoHistorico); });
 }
 function exibirParecerGerado(resultado){
-  const alvo=$("#parecer-resultado");alvo.replaceChildren();
-  const campos=[["Síntese",resultado.sintese],["Observações",resultado.observacoes],["Interpretação contextual",resultado.interpretacao_contextual],["Limitações",resultado.limitacoes],["Recomendações",resultado.recomendacoes],["Conclusão",resultado.conclusao]];
-  for(const [titulo,conteudo] of campos){
-    const card=document.createElement("article");card.className="summary-card";
+  const alvo=$("#parecer-resultado");if(!alvo)return;
+  alvo.replaceChildren();
+  const campos=[
+    ["Síntese do período",resultado.sintese,"parecer-card--sintese"],
+    ["O que os dados mostram",resultado.observacoes,"parecer-card--observacoes"],
+    ["Como interpretar",resultado.interpretacao_contextual,"parecer-card--interpretacao"],
+    ["Cuidados na interpretação",resultado.limitacoes,"parecer-card--limitacoes"],
+    ["Próximos passos sugeridos",resultado.recomendacoes,"parecer-card--recomendacoes"],
+    ["Conclusão",resultado.conclusao,"parecer-card--conclusao"]
+  ];
+  for(const [titulo,conteudo,classe] of campos){
+    const card=document.createElement("section");card.className="parecer-card "+classe;
     const h=document.createElement("h3");h.textContent=titulo;card.appendChild(h);
-    if(Array.isArray(conteudo)){const ul=document.createElement("ul");for(const item of conteudo){const li=document.createElement("li");li.textContent=item;ul.appendChild(li);}card.appendChild(ul);}
-    else{const p=document.createElement("p");p.textContent=conteudo;card.appendChild(p);}
+    if(Array.isArray(conteudo)){
+      const ul=document.createElement("ul");
+      for(const item of conteudo){const li=document.createElement("li");li.textContent=item;ul.appendChild(li);}
+      card.appendChild(ul);
+    }else{const p=document.createElement("p");p.textContent=conteudo;card.appendChild(p);}
     alvo.appendChild(card);
   }
 }
