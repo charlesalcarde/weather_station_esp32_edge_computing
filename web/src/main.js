@@ -198,6 +198,18 @@ function abrirInfo(chave) {
   $("#info-modal-close").focus();
 }
 
+function abrirInfoEdge(nome, contexto) {
+  $("#info-modal-eyebrow").textContent = "Indicador Edge";
+  $("#info-modal-title").textContent = nome;
+  $("#info-modal-body").replaceChildren();
+  const explicacao = document.createElement("p");
+  explicacao.textContent = contexto;
+  $("#info-modal-body").appendChild(explicacao);
+  $("#info-modal").classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  $("#info-modal-close").focus();
+}
+
 function fecharInfo() {
   $("#info-modal").classList.add("hidden");
   document.body.classList.remove("modal-open");
@@ -295,20 +307,26 @@ function renderEdge(d) {
   for (const [nome,valor,origem,contexto] of campos) {
     const item = document.createElement("div");
     item.className = "edge-indicador";
+    const cabecalho = document.createElement("div");
+    cabecalho.className = "edge-indicador-cabecalho";
     const titulo = document.createElement("span");
     titulo.className = "edge-indicador-nome";
     titulo.textContent = nome;
+    cabecalho.appendChild(titulo);
+    if (contexto) {
+      const ajuda = document.createElement("button");
+      ajuda.type = "button";
+      ajuda.className = "info-icon";
+      ajuda.textContent = "i";
+      ajuda.setAttribute("aria-label", "Explicação sobre " + nome);
+      ajuda.addEventListener("click", () => abrirInfoEdge(nome, contexto));
+      cabecalho.appendChild(ajuda);
+    }
     const valorEl = document.createElement("strong");
     valorEl.textContent = valor == null || valor === "" ? "Não informado" : String(valor);
     const descricao = document.createElement("small");
     descricao.textContent = origem;
-    item.append(titulo, valorEl, descricao);
-    if (contexto) {
-      const explicacao = document.createElement("p");
-      explicacao.className = "edge-indicador-contexto";
-      explicacao.textContent = contexto;
-      item.appendChild(explicacao);
-    }
+    item.append(cabecalho, valorEl, descricao);
     painel.appendChild(item);
   }
 }
@@ -1014,33 +1032,60 @@ function iniciarAtualizacaoAutomatica() {
 }
 
 function configurarNavegacao() {
-  // Reorganiza seções existentes, preservando IDs, handlers e gráficos.
+  // A estrutura visual muda; IDs, gráficos e cálculos existentes permanecem.
   const monitor = $("#area-monitoramento");
-  const analises = $("#area-analises");
+  const cloud = $("#area-analises");
+  const edge = $("#area-edge");
   const callout = document.querySelector(".edge-callout");
   const sections = [...document.querySelectorAll("main.container > section.section")];
+  const edgeSection = edge.querySelector("section.section");
+  const m5 = edge.querySelector(".m5-lab");
+  const parecer = cloud.querySelector(".parecer-preparacao");
+  const encontrar = (selector) => sections.find(section => section.querySelector(selector));
+  const condicoes = encontrar("#cards-agora");
+  const comparacao = encontrar("#cards-comparacao");
+  const historico = encontrar("#chart-temperatura");
+  const delta = encontrar("#chart-delta-temperatura");
+  const resumo = encontrar("#cards-resumo");
+  const ocultas = sections.filter(section => ![
+    condicoes, comparacao, historico, delta, resumo
+  ].includes(section));
+  // Preserva os nós para que a geração de evidências do parecer continue funcionando.
+  const apoio = document.createElement("div");
+  apoio.id = "analises-internas";
+  apoio.hidden = true;
+  apoio.style.display = "none";
+  for (const section of ocultas) apoio.appendChild(section);
   if (callout) monitor.appendChild(callout);
-  for (const section of sections) {
-    const isMonitoramento = section.querySelector("#cards-agora") || section.querySelector("#cards-comparacao");
-    (isMonitoramento ? monitor : analises).appendChild(section);
-  }
+  if (condicoes) monitor.appendChild(condicoes);
+  if (comparacao) monitor.appendChild(comparacao);
+  if (edgeSection) monitor.appendChild(edgeSection);
+  if (historico) cloud.appendChild(historico);
+  if (delta) cloud.appendChild(delta);
+  if (parecer) cloud.appendChild(parecer);
+  if (resumo) cloud.appendChild(resumo);
+  if (m5) cloud.appendChild(m5);
+  cloud.appendChild(apoio);
+  edge.remove();
   const botoes = $$(".dashboard-tab");
   function ativar(area, atualizarUrl=true) {
-    if (!["monitoramento","analises","edge"].includes(area)) area="monitoramento";
-    for (const nome of ["monitoramento","analises","edge"]) {
-      const ativo=nome===area;
-      $("#area-"+nome).hidden=!ativo;
-      const botao=botoes.find(b=>b.dataset.area===nome);
-      botao.classList.toggle("active",ativo);
-      botao.setAttribute("aria-selected",String(ativo));
+    if (area === "edge") area = "monitoramento"; // compatibilidade com links anteriores
+    if (!["monitoramento","analises"].includes(area)) area = "monitoramento";
+    for (const nome of ["monitoramento","analises"]) {
+      const ativo = nome === area;
+      $("#area-" + nome).hidden = !ativo;
+      const botao = botoes.find(b => b.dataset.area === nome);
+      if (botao) {
+        botao.classList.toggle("active", ativo);
+        botao.setAttribute("aria-selected", String(ativo));
+      }
     }
-    if (atualizarUrl) history.replaceState(null,"","#"+area);
-    // Chart.js precisa recalcular o tamanho após o painel voltar a ficar visível.
-    if (area==="analises") requestAnimationFrame(()=>Object.values(charts).forEach(chart=>chart.resize()));
+    if (atualizarUrl) history.replaceState(null, "", "#" + area);
+    if (area === "analises") requestAnimationFrame(() => Object.values(charts).forEach(chart => chart.resize()));
   }
-  botoes.forEach(botao=>botao.addEventListener("click",()=>ativar(botao.dataset.area)));
-  window.addEventListener("hashchange",()=>ativar(location.hash.slice(1),false));
-  ativar(location.hash.slice(1),false);
+  botoes.forEach(botao => botao.addEventListener("click", () => ativar(botao.dataset.area)));
+  window.addEventListener("hashchange", () => ativar(location.hash.slice(1), false));
+  ativar(location.hash.slice(1), false);
 }
 
 for (const id of ["m5-variavel","m5-intervalo","m5-dt","m5-du","m5-dp"]) {

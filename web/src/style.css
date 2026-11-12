@@ -393,3 +393,10 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .parecer-evidencias-links .period-button{white-space:normal;text-align:left;line-height:1.35}
 .parecer-card--evidencias{grid-column:1/-1}
 .chart-card:focus{outline:2px solid var(--accent,#60a5fa);outline-offset:3px}
+
+/* Dashboard Edge/Cloud: cards compactos e ajuda contextual acessível. */
+.edge-indicador-cabecalho{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.edge-indicador-cabecalho .info-icon{flex:0 0 auto}
+.m5-fidelidade{margin:16px 0 20px}
+.m5-fidelidade .m5-table-wrap{margin-bottom:0}
+.dashboard-area[hidden],#analises-internas[hidden]{display:none!important}
