@@ -1060,11 +1060,11 @@ function configurarNavegacao() {
   if (condicoes) monitor.appendChild(condicoes);
   if (comparacao) monitor.appendChild(comparacao);
   if (edgeSection) monitor.appendChild(edgeSection);
-  if (m5) cloud.appendChild(m5);
   if (historico) cloud.appendChild(historico);
   if (delta) cloud.appendChild(delta);
   if (parecer) cloud.appendChild(parecer);
   if (resumo) cloud.appendChild(resumo);
+  if (m5) cloud.appendChild(m5);
   cloud.appendChild(apoio);
   edge.remove();
   const botoes = $$(".dashboard-tab");
