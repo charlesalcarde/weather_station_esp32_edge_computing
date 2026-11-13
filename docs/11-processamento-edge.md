@@ -17,6 +17,7 @@ dependência da Cloud.
 
 ## Índice
 
+- [Nota de consolidação — novembro de 2026](#nota-de-consolidação--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. O que caracteriza o processamento
     Edge](#2-o-que-caracteriza-o-processamento-edge)
