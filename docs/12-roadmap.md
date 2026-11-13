@@ -1,5 +1,7 @@
 # Roadmap da Estação Ambiental ESP32
 
+> **Nota de atualização (13/11/2026):** este roadmap preserva marcos históricos e ainda contém itens descritos como futuros que já possuem implementação experimental ou no dashboard Web. Para o estado do código versionado, consulte [Dashboard Web e camada Cloud](15-dashboard-web-cloud.md); para o estado de homologação, consulte [M4 — Resiliência](metricas/04-resiliencia.md) e [M5 — Transformação de dados](metricas/05-transformacao-dados.md). A reclassificação integral dos marcos está pendente nesta branch documental.
+
 Este documento registra a evolução planejada da **Estação Ambiental
 ESP32**, distinguindo funcionalidades já consolidadas, recursos em
 desenvolvimento e possibilidades futuras de pesquisa.
