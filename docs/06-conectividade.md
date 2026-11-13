@@ -1,5 +1,7 @@
 # Conectividade da Estação Ambiental ESP32
 
+> **Atualização documental (13/11/2026):** A conectividade local do ESP32 e o acesso remoto ao dashboard Vercel são serviços distintos. Para investigar ausência de Wi-Fi/IP ou telemetria, seguir [Diagnóstico operacional](16-diagnostico-operacional.md). Não presumir que a existência do dashboard remoto implique VPN ou acesso direto à rede local.
+
 Este documento descreve a arquitetura de conectividade da **Estação
 Ambiental ESP32**, incluindo Wi-Fi, múltiplas redes conhecidas,
 provisionamento, Access Point de configuração, persistência em NVS,

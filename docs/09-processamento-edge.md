@@ -1,5 +1,10 @@
 # Processamento Edge da Estação Ambiental ESP32
 
+## Estado e documentação relacionada — novembro de 2026
+
+Este é o **documento canônico** para o processamento Edge. A implementação de referência no repositório é o firmware v3.6.7; os estudos EXP04c/EXP04d e a transformação M5 pertencem aos relatórios experimentais e não devem ser confundidos com funcionalidades homologadas nesse firmware. Consultar [Métricas](metricas/README.md) e [Arquitetura](02-arquitetura.md).
+
+
 Este documento descreve o processamento executado localmente pela
 **Estação Ambiental ESP32**, destacando a transformação de dados brutos
 dos sensores em informação ambiental interpretável antes de qualquer
@@ -10,8 +15,20 @@ dependência da Cloud.
 
 ------------------------------------------------------------------------
 
+## Nota de escopo — comparação estática EXP04c.3c.2
+
+O pacote `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(6).zip`, recebido em 13/11/2026, contém firmware `EstacaoAmbiental_Etapa2_Integracao.ino`. A inspeção estática identificou:
+
+- A rota HTTP `/api/metricas`, que expõe indicadores instrumentados, sem que a mera existência da rota constitua homologação M1–M5.
+- Persistência local e replay EXP04, que são mecanismos de **resiliência de dados**, distintos da interpretação ambiental e da decisão Edge.
+- `EXP04C3_INTERVALO_OFF_MS = 180000UL` e `EXP04_REPLAY_INTERVALO_MS = 10000UL`: intervalos nominais de gravação OFF e tentativa de replay; o tempo efetivo depende de execução, conectividade e fila.
+- Agrupamento experimental controlado por `EXP04 PACK ON/OFF`, separado do processamento ambiental contínuo.
+
+A comparação aqui é de **implementação identificada no artefato**, não de desempenho medido, versão instalada ou execução validada. A implementação do pacote não foi copiada para a `main`. Consultar [Firmware](04-firmware.md), [M4](metricas/04-resiliencia.md) e [M5](metricas/05-transformacao-dados.md).
+
 ## Índice
 
+- [Estado e documentação relacionada — novembro de 2026](#estado-e-documentação-relacionada--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. O que caracteriza o processamento
     Edge](#2-o-que-caracteriza-o-processamento-edge)

@@ -1,5 +1,7 @@
 # Visão Geral — Estação Ambiental ESP32
 
+> **Atualização documental (13/11/2026):** A arquitetura atualmente versionada inclui o [dashboard Web e Cloud](15-dashboard-web-cloud.md), com análise contextual, parecer com IA e laboratório M5. Os resultados de persistência EXP04c/EXP04d permanecem classificados conforme [M4](metricas/04-resiliencia.md); não são automaticamente parte do firmware v3.6.7 versionado. A localização física, a referência Open-Meteo e a campanha de medição devem ser tratadas separadamente.
+
 ## Índice
 
 - [1. Apresentação](#1-apresentação)

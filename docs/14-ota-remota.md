@@ -1,7 +1,15 @@
 # OTA Remota — Estação Ambiental ESP32
 
+## Verificação do código versionado — 13/11/2026
+
+O arquivo `EstacaoAmbiental_v3_6_7_OTA_HTTPS_TARGET.ino` declara `FIRMWARE_VERSION "3.6.7"`, consulta o manifesto remoto `releases/version.json` e define `INTERVALO_OTA_REMOTA = 21600000UL` (**6 horas**) e `ATRASO_PRIMEIRA_OTA_REMOTA = 15000UL` (**15 segundos**). Portanto, a meta de verificação a cada **5 minutos**, mencionada no roadmap, **não corresponde à constante presente nesse arquivo**.
+
+O cabeçalho da seção OTA do `.ino` ainda descreve uma etapa apenas de consulta, mas o histórico de versões no próprio arquivo e este documento registram uma OTA HTTPS com instalação validada. Para estabelecer o comportamento real, consultar a implementação executável e os testes; comentários históricos não são suficientes. A implementação menciona uso de `setInsecure()` em sua etapa inicial; não declarar autenticação TLS por certificado como homologada sem inspeção e teste específicos. Downgrade, rollback automático e OTA do LittleFS continuam sujeitos à comprovação separada.
+
+
 ## Índice
 
+- [Verificação do código versionado — 13/11/2026](#verificação-do-código-versionado--13112026)
 1. [Objetivo](#1-objetivo)
 2. [Contexto do projeto](#2-contexto-do-projeto)
 3. [Arquitetura de atualização](#3-arquitetura-de-atualização)
@@ -437,38 +445,23 @@ Exemplo conceitual:
 
 ## 20. Estado atual e roadmap
 
-### Implementado e validado
+### Evidências disponíveis
 
-- [x] ArduinoOTA local
-- [x] tabela de partições com APP0/APP1
-- [x] consulta HTTPS ao manifesto
-- [x] `version.json`
-- [x] comparação de versões
-- [x] GitHub Release como origem do firmware
-- [x] download do `.bin`
-- [x] tratamento de redirecionamento HTTP
-- [x] cálculo SHA-256 em streaming
-- [x] comparação com hash do manifesto
-- [x] gravação na partição OTA
-- [x] mudança da partição de boot
-- [x] reinicialização
-- [x] primeira atualização OTA HTTPS real concluída
-- [x] confirmação de boot persistente da nova versão
+- **Versionado:** ArduinoOTA local, partições APP0/APP1, consulta ao manifesto remoto, autorização pelo campo `install`, download de firmware, verificação SHA-256 e escrita OTA.
+- **Documentado em ensaio anterior:** instalação HTTPS real da versão 3.6.6 para 3.6.7 e confirmação posterior de boot. Esse resultado não comprova automaticamente todos os mecanismos de rollback e downgrade.
+- **Cadência efetiva no firmware v3.6.7 versionado:** 6 horas, com primeira verificação após 15 segundos; o intervalo de 5 minutos é uma meta de alteração futura.
+- **Segurança TLS:** há chamadas executáveis a `WiFiClientSecure::setInsecure()` no firmware versionado e não foi identificada chamada a `setCACert()`. Portanto, não afirmar validação de identidade do servidor por cadeia de certificados nesse código. A comparação SHA-256 protege contra divergência do binário em relação ao hash recebido, mas não autentica independentemente a origem de um manifesto obtido por canal sem validação de certificado.
 
-### Próximas etapas
+### Pendências para homologação
 
-- [ ] alterar consulta OTA para aproximadamente 5 minutos
-- [ ] habilitar temporariamente instalação automática de versão superior
-- [ ] implementar downgrade remoto autorizado (`force`)
-- [ ] registrar eventos OTA na Cloud
-- [ ] implementar validação de primeiro boot
-- [ ] implementar rollback automático
-- [ ] substituir `setInsecure()` por validação TLS adequada
-- [ ] proteger/autenticar melhor OTA local
-- [ ] implementar OTA do LittleFS
-- [ ] automatizar build e Release com GitHub Actions
-- [ ] integrar autorização OTA ao dashboard/Supabase
-- [ ] avaliar assinatura criptográfica de firmware
+- [ ] Substituir `setInsecure()` por validação TLS apropriada e testar certificados inválidos.
+- [ ] Avaliar assinatura do firmware ou mecanismo equivalente de autenticidade independente.
+- [ ] Decidir e implementar a cadência de 5 minutos, se desejada.
+- [ ] Comprovar downgrade remoto autorizado, rollback automático e confirmação de primeiro boot.
+- [ ] Validar OTA do LittleFS separadamente da OTA de firmware.
+- [ ] Registrar eventos OTA e automatizar build/release quando apropriado.
+
+Consultar o [roadmap consolidado](12-roadmap.md) para a classificação dos demais componentes.
 
 ## 21. Decisões arquiteturais
 

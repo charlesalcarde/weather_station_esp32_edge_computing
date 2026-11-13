@@ -1,5 +1,12 @@
 # Arquitetura da Estação Ambiental ESP32
 
+## Atualização arquitetural — novembro de 2026
+
+A camada Web remota já está implementada no código versionado em `web/`, com APIs serverless, visualização histórica, análises local × referência externa, parecer sob demanda e laboratório M5. Portanto, referências a um **futuro dashboard remoto** nas seções históricas deste documento não descrevem o estado atual da camada Web. Ver [Dashboard Web e Cloud](15-dashboard-web-cloud.md).
+
+O firmware versionado em `main` permanece v3.6.7; os ensaios EXP04c/EXP04d de buffer, compactação e replay estão documentados como experimentos em [M4](metricas/04-resiliencia.md), sem comprovação de integração àquele arquivo `.ino`. A localização física da estação, a referência externa Open-Meteo e a campanha de medição são conceitos distintos.
+
+
 Este documento descreve a arquitetura técnica da **Estação Ambiental
 ESP32**, apresentando seus componentes, responsabilidades, fluxos de
 dados e a divisão entre processamento local em borda e serviços
@@ -13,6 +20,7 @@ externos.
 
 ## Índice
 
+- [Atualização arquitetural — novembro de 2026](#atualização-arquitetural--novembro-de-2026)
 -   [1. Objetivo da arquitetura](#1-objetivo-da-arquitetura)
 -   [2. Visão geral](#2-visão-geral)
 -   [3. Princípios arquiteturais](#3-princípios-arquiteturais)

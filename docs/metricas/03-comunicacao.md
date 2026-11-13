@@ -40,7 +40,7 @@ A Estação Ambiental Inteligente utiliza um ESP32 para adquirir dados do BMP180
 
 A **Métrica M3 — Comunicação** caracteriza o fluxo de telemetria **ESP32 → Supabase**. Sua finalidade é medir o volume produzido pela aplicação, verificar o comportamento das requisições e construir uma referência quantitativa para futuras estratégias de seleção de atributos, compactação ou transmissão orientada a eventos.
 
-Esta avaliação integra o programa descrito no [README das métricas](README.md) e complementa a [M1 — Latência](01-latencia.md), a [M2 — Recursos computacionais](02-recursos-computacionais.md) e a futura [M4 — Resiliência](04-resiliencia.md).
+Esta avaliação integra o programa descrito no [README das métricas](README.md) e complementa a [M1 — Latência](01-latencia.md), a [M2 — Recursos computacionais](02-recursos-computacionais.md) e a [M4 — Resiliência](04-resiliencia.md).
 
 ## 2. Objetivos e perguntas de avaliação
 
@@ -284,12 +284,12 @@ A próxima etapa da M3 será comparar alternativas de representação e transmis
 - [README — Avaliação experimental](README.md).
 - [M1 — Latência](01-latencia.md).
 - [M2 — Recursos computacionais](02-recursos-computacionais.md).
-- [M4 — Resiliência](04-resiliencia.md) — documento previsto.
+- [M4 — Resiliência](04-resiliencia.md) — ensaios realizados e critérios ainda pendentes de homologação.
 - [Visão geral do projeto](../01-visao-geral.md).
 - [Arquitetura da estação](../02-arquitetura.md).
 - [Conectividade](../06-conectividade.md).
 - [Integração Cloud](../07-cloud.md).
-- [Processamento Edge](../11-processamento-edge.md) — conferir nome efetivo no repositório.
+- [Processamento Edge](../09-processamento-edge.md) — conferir nome efetivo no repositório.
 
 ### Fontes técnicas e evidências
 

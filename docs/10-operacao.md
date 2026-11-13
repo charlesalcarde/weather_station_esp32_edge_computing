@@ -1,5 +1,12 @@
 # Operação da Estação Ambiental ESP32
 
+## Complemento operacional — novembro de 2026
+
+Este manual preserva procedimentos da fase v3.4-RC1. Para a investigação atual de falhas de alimentação, boot, heartbeat, Wi-Fi, LittleFS e Supabase, utilizar também [Diagnóstico operacional](16-diagnostico-operacional.md), que registra o incidente ainda não resolvido de 13/11/2026.
+
+**Atenção:** LED de alimentação aceso não garante tensão estável no ESP32; ausência de resposta em um IP conhecido não prova, isoladamente, falha do servidor local; ausência de dados no Supabase não prova que o processamento Edge parou. Preservar logs e medições antes de regravar firmware ou formatar LittleFS.
+
+
 Este documento descreve a operação cotidiana da **Estação Ambiental
 ESP32**, incluindo inicialização, leitura do dashboard, interpretação
 dos indicadores, eventos, conectividade, configuração e procedimentos
@@ -12,6 +19,7 @@ básicos de diagnóstico.
 
 ## Índice
 
+- [Complemento operacional — novembro de 2026](#complemento-operacional--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. Objetivo deste documento](#2-objetivo-deste-documento)
 -   [3. Fluxo operacional](#3-fluxo-operacional)

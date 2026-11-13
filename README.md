@@ -1,10 +1,12 @@
 # Estação Ambiental ESP32
 
+> **Atualização documental — novembro de 2026:** consulte [Dashboard Web e camada Cloud](docs/15-dashboard-web-cloud.md) para as APIs, parecer com IA e laboratório M5 atualmente versionados; consulte [Diagnóstico operacional](docs/16-diagnostico-operacional.md) para investigação de falhas. O firmware de referência na `main` continua identificado como v3.6.7; experimentos EXP04c/EXP04d não devem ser confundidos com funcionalidades incorporadas a essa versão. Algumas seções históricas ainda estão em revisão; o [roadmap consolidado](docs/12-roadmap.md) apresenta o estado por componente.
+
 Estação ambiental experimental baseada em ESP32 desenvolvida como plataforma de estudo, desenvolvimento e experimentação em **Computação de Borda (Edge Computing)**.
 
 O sistema realiza aquisição de dados ambientais, processamento local, análise temporal, classificação das condições ambientais, detecção de eventos, visualização por dashboard Web local, telemetria Cloud, dashboard remoto e atualização de firmware OTA pela rede local e pela Internet.
 
-> **Referência arquitetural:** firmware v3.6.7. **Avaliação experimental:** instrumentações EXP01b–EXP04b.2; os resultados e a configuração de cada ensaio são documentados separadamente em [`docs/metricas/`](docs/metricas/README.md).
+> **Referência arquitetural:** firmware v3.6.7. **Avaliação experimental:** instrumentações EXP01b–EXP04d e estudos EXP05 M5; os resultados e a configuração de cada ensaio são documentados separadamente em [`docs/metricas/`](docs/metricas/README.md).
 
 ---
 
@@ -210,7 +212,7 @@ $$
 
 Assim, a estação não transmite apenas dados brutos: ela produz **informação derivada e estados ambientais no próprio Edge**.
 
-Documentação detalhada: [`docs/11-processamento-edge.md`](docs/11-processamento-edge.md).
+Documentação detalhada (referência canônica): [`docs/09-processamento-edge.md`](docs/09-processamento-edge.md).
 
 ---
 
@@ -583,7 +585,7 @@ A documentação técnica detalhada está organizada em `docs/`.
 | [`08-particionamento-flash.md`](docs/08-particionamento-flash.md) | Flash, APP0/APP1, OTA e LittleFS |
 | [`09-processamento-edge.md`](docs/09-processamento-edge.md) | processamento Edge (documento existente) |
 | [`10-operacao.md`](docs/10-operacao.md) | operação e diagnóstico |
-| [`11-processamento-edge.md`](docs/11-processamento-edge.md) | processamento matemático e Edge Computing |
+| [`11-processamento-edge.md`](docs/11-processamento-edge.md) | referência histórica; conteúdo consolidado em [`09-processamento-edge.md`](docs/09-processamento-edge.md) |
 | [`12-roadmap.md`](docs/12-roadmap.md) | evolução planejada |
 | [`13-incidente-supabase-401-jwt.md`](docs/13-incidente-supabase-401-jwt.md) | registro de incidente Supabase |
 | [`14-ota-remota.md`](docs/14-ota-remota.md) | arquitetura, segurança e ciclo de atualização OTA remota |
@@ -595,7 +597,7 @@ A avaliação quantitativa da arquitetura **Edge → Cloud** está organizada em
 
 **Documento de entrada:** [`docs/metricas/README.md`](docs/metricas/README.md).
 
-| Métrica | Objeto de avaliação | Documento previsto |
+| Métrica | Objeto de avaliação | Relatório disponível |
 |---|---|---|
 | **M1 — Latência** | aquisição, processamento local e operação HTTPS; distinção entre latência de comunicação e ponta a ponta | [`01-latencia.md`](docs/metricas/01-latencia.md) |
 | **M2 — Recursos computacionais** | tempo de CPU por rotina, Flash, RAM/heap e viabilidade no ESP32 | [`02-recursos-computacionais.md`](docs/metricas/02-recursos-computacionais.md) |

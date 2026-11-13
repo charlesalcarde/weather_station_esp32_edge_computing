@@ -1,5 +1,7 @@
 # Dashboard Local da Estação Ambiental ESP32
 
+> **Atualização documental (13/11/2026):** Este documento descreve a interface **embarcada no LittleFS**, distinta do [dashboard remoto Vercel](15-dashboard-web-cloud.md). Alterações de UI do dashboard Web não implicam alteração do HTML/CSS/JS do ESP32. O código versionado de referência encontra-se em `firmware/estacao_ambiental/data/`.
+
 Este documento descreve a interface Web local da **Estação Ambiental
 ESP32**, sua organização no LittleFS, responsabilidades, fluxo de
 atualização e relação com o processamento executado no nó Edge.

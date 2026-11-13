@@ -9,6 +9,8 @@
 
 ---
 
+> **Rastreabilidade do artefato (13/11/2026):** o pacote recebido `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(6).zip` contém `EstacaoAmbiental_Etapa2_Integracao.ino`, `partitions.csv`, `data/`, `README.md` e `SHA256SUMS.txt`. Seu README registra o estado **na preparação do pacote** como revisão estática, sem compilação ou teste em hardware. A validação funcional posterior, descrita neste relatório, é uma evidência independente e não altera retroativamente esse registro. O pacote foi inspecionado localmente; seu conteúdo não foi publicado no repositório por esta revisão documental.
+
 ## Índice
 
 - [1. Introdução](#1-introdução)
@@ -356,7 +358,7 @@ A etapa posterior EXP04c.3c.1 ampliou a capacidade e demonstrou recuperação ap
 - [Arquitetura da estação](../02-arquitetura.md).
 - [Integração Cloud](../07-cloud.md).
 - [Particionamento Flash, OTA e LittleFS](../08-particionamento-flash.md).
-- [Processamento Edge](../11-processamento-edge.md).
+- [Processamento Edge](../09-processamento-edge.md).
 - [Operação e diagnóstico](../10-operacao.md).
 
 ### Artefatos e evidências experimentais

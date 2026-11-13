@@ -1,5 +1,7 @@
 # Hardware da Estação Ambiental ESP32
 
+> **Atualização documental (13/11/2026):** O registro de hardware da fase v3.4-RC1 deve ser confrontado com a montagem física atualmente utilizada. Em 13/11/2026 foi informada uma shield com entrada externa de 9 V e regulador; não há medição elétrica presencial que permita confirmar as tensões reais sob carga. Consultar [Diagnóstico operacional](16-diagnostico-operacional.md).
+
 Este documento descreve o hardware utilizado na **Estação Ambiental
 ESP32**, incluindo microcontrolador, sensores, interfaces elétricas,
 GPIOs, alimentação e organização física das conexões.

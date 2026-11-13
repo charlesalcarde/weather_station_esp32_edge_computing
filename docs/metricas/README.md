@@ -1,20 +1,28 @@
 # Avaliação experimental da arquitetura Edge → Cloud
 
+## Atualização de estado experimental — novembro de 2026
+
+O relatório [M4 — Resiliência](04-resiliencia.md) já documenta **EXP04c.3c.2 validada funcionalmente em ensaio curto de Wi-Fi OFF, fallback e replay** e **EXP04d validada para recuperação após corte de energia entre gravações**. A meta de **12 horas sem perdas** e a resistência a corte **durante** a gravação **continuam não homologadas**. Assim, as descrições anteriores de EXP04c.3c.2 *ainda em validação* devem ser interpretadas como registro histórico, não como o estado mais recente.
+
+O experimento [M5 — Transformação de dados](05-transformacao-dados.md) é retrospectivo; o laboratório M5 no [dashboard Web](../15-dashboard-web-cloud.md) simula políticas sobre a série bruta do período selecionado. Nenhum desses resultados demonstra redução real de consumo energético do ESP32.
+
+
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 > **Escopo:** metodologia e organização das cinco métricas da Estação Ambiental ESP32. Este documento complementa o [README principal](../../README.md) e não substitui os relatórios individuais.
 
-> **Estado:** documentação experimental em evolução; meta experimental de 12 horas definida; EXP04c.3c.1 auditada e EXP04c.3c.2 em validação. A homologação permanece pendente.
+> **Estado em novembro de 2026:** M1–M3 têm caracterizações iniciais; EXP04c.3c.1 foi auditada, EXP04c.3c.2 foi validada funcionalmente em ensaio curto e EXP04d foi validada para corte de energia entre gravações. A meta de 12 horas sem perdas e o corte durante escrita permanecem não homologados. M5 é avaliação retrospectiva concluída, sem transmissão seletiva implementada.
 
 ---
 
 ## Índice
 
+- [Atualização de estado experimental — novembro de 2026](#atualização-de-estado-experimental--novembro-de-2026)
 - [1. Introdução](#1-introdução)
 - [2. Pergunta de pesquisa e objetivos](#2-pergunta-de-pesquisa-e-objetivos)
   - [2.1 Objetivo geral](#21-objetivo-geral)
   - [2.2 Objetivos específicos](#22-objetivos-específicos)
 - [3. Arquitetura sob avaliação](#3-arquitetura-sob-avaliação)
-- [4. Metodologia experimental](#4-metodologia-experimental)
+- [4. Metodologia geral](#4-metodologia-geral)
   - [4.1 Unidade experimental](#41-unidade-experimental)
   - [4.2 Periodicidade e janelas](#42-periodicidade-e-janelas)
   - [4.3 Instrumentação](#43-instrumentação)

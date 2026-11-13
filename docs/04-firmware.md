@@ -1,15 +1,44 @@
 # Firmware da Estação Ambiental ESP32
 
+## Estado do firmware versionado — novembro de 2026
+
+O arquivo de referência presente em `main` é `firmware/estacao_ambiental/EstacaoAmbiental_v3_6_7_OTA_HTTPS_TARGET.ino` (`FIRMWARE_VERSION` = `3.6.7`). Este documento mantém o detalhamento histórico da arquitetura v3.4-RC1; não deve ser interpretado como inventário completo das funções atuais. O firmware versionado inclui mecanismos de OTA local e remota, enquanto a implementação de persistência/compactação das EXP04c/EXP04d é descrita separadamente como experimental em [M4](metricas/04-resiliencia.md).
+
+Para diagnóstico de boot, LED e conectividade, consultar [Diagnóstico operacional](16-diagnostico-operacional.md). Para os procedimentos de atualização, consultar [OTA remota](14-ota-remota.md).
+
+
 Este documento descreve a organização lógica, as responsabilidades e o
 fluxo de execução do firmware da **Estação Ambiental ESP32**.
 
-> Documento referente à arquitetura de firmware consolidada na fase
-> **v3.4-RC1** do projeto.
+> A descrição detalhada de fluxos e rotinas abaixo foi originalmente elaborada na fase **v3.4-RC1**. Para versão de referência e diferenças verificadas, consultar a seção de atualização acima e o [README do firmware](../firmware/estacao_ambiental/README-firmware.md).
 
 ------------------------------------------------------------------------
 
+### Pacote experimental EXP04c.3c.2 recebido em 13/11/2026
+
+Foi inspecionado o pacote `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(6).zip`, com o arquivo `EstacaoAmbiental_Etapa2_Integracao.ino`. Ele declara `FIRMWARE_VERSION "3.6.7"`, mas **essa string de versão não identifica, por si só, o mesmo conjunto de funcionalidades do firmware v3.6.7 publicado na `main`**.
+
+| Item | Evidência no código do pacote |
+| --- | --- |
+| Métricas | Registro da rota HTTP `/api/metricas` |
+| Janela de armazenamento em OFF | `EXP04C3_INTERVALO_OFF_MS = 180000UL` |
+| Replay | `EXP04_REPLAY_INTERVALO_MS = 10000UL` |
+| Agrupamento | Registros `.grp`, CRC32, cursores alternados e fallback individual |
+| OTA remota | `INTERVALO_OTA_REMOTA = 21600000UL` (6 horas) |
+| TLS | Chamadas a `setInsecure()`; nenhuma chamada a `setCACert()` identificada |
+| Dashboard local | `data/index.html`, `data/style.css`, `data/app.js` e `data/favicon.png` |
+
+**Integridade do artefato:** o SHA-256 do arquivo `.ino` extraído coincide com o registro em `SHA256SUMS.txt`: `9b83bf0dff37fb58d7c58209c735da2bc46ad4375e09e0d073f4cf904bb2c924`. Isso confirma consistência dos bytes do pacote com seu manifesto local, **não** autoria, autenticidade de origem ou execução em hardware.
+
+O agrupamento inicia **desligado** e é habilitado por `EXP04 PACK ON` apenas na inicialização corrente. O README do pacote descreve a implementação como **não compilada nem testada fisicamente no momento de preparação**. A posterior validação funcional de curta duração deve ser consultada em [M4 — Resiliência](metricas/04-resiliencia.md); a meta de 12 horas sem perdas permanece não homologada.
+
+O comando `EXP04 PACK OFF` impede novas gravações agrupadas sem impedir o replay de grupos existentes. A falha de compactação, espaço ou abertura antes da escrita pode acionar fallback individual; se a escrita agrupada for parcial ou ambígua, o fallback é bloqueado para reduzir risco de duplicação. O cursor persistido após HTTP 2xx ainda admite duplicidade em caso de perda de energia no intervalo crítico; é necessária idempotência no backend para garantia de não duplicação.
+
+**Escopo da inspeção:** leitura estática do ZIP. Não houve compilação, upload, teste elétrico ou alteração do firmware.
+
 ## Índice
 
+- [Estado do firmware versionado — novembro de 2026](#estado-do-firmware-versionado--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. Responsabilidades do firmware](#2-responsabilidades-do-firmware)
 -   [3. Ciclo de execução](#3-ciclo-de-execução)

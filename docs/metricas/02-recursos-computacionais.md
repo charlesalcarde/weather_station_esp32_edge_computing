@@ -41,7 +41,7 @@ A Estação Ambiental Inteligente executa aquisição de sensores, cálculo de i
 
 A Métrica M2 caracteriza o custo dessa arquitetura no dispositivo. Sua finalidade é verificar se os algoritmos locais cabem nas restrições de tempo e memória da plataforma **sem confundir viabilidade observada com garantia de comportamento em qualquer cenário**.
 
-Esta avaliação complementa a [M1 — Latência](01-latencia.md), que examina os tempos das etapas, e a [M4 — Resiliência](04-resiliencia.md), que examinará os efeitos de falhas de comunicação e armazenamento.
+Esta avaliação complementa a [M1 — Latência](01-latencia.md), que examina os tempos das etapas, e a [M4 — Resiliência](04-resiliencia.md), que examina os efeitos de falhas de comunicação e armazenamento.
 
 ## 2. Objetivos e perguntas de avaliação
 
@@ -265,7 +265,7 @@ A conclusão é de **viabilidade observada do firmware atual**, acompanhada de r
 - [README das métricas](README.md) — metodologia e organização da avaliação.
 - [README principal](../../README.md) — visão geral do projeto.
 - [M1 — Latência](01-latencia.md) — duração das etapas de aquisição e processamento.
-- [M4 — Resiliência](04-resiliencia.md) — a ser produzido; persistência e recuperação de registros.
+- [M4 — Resiliência](04-resiliencia.md) — ensaios documentados de persistência e recuperação, com limites de homologação.
 - [Arquitetura](../02-arquitetura.md) — organização Edge → Cloud.
 - [Firmware](../04-firmware.md) — organização do software embarcado.
 - [Particionamento Flash](../08-particionamento-flash.md) — layout de memória e OTA.
