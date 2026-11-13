@@ -425,3 +425,23 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .m5-fidelidade-grupo summary{font-weight:560}
 .m5-fidelidade-grupo .m5-table-wrap{margin-bottom:0}
 @media(max-width:560px){.hero h1{font-size:clamp(1.8rem,7vw,2.4rem)}}
+
+/* Refinamento do cabeçalho: identidade de plataforma científica, sem título monumental. */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px 28px;align-items:start;margin-bottom:18px}
+.hero-main{min-width:0}
+.hero .brand-line{gap:9px;margin-bottom:12px}
+.hero .brand-logo{width:30px;height:30px}
+.hero .kicker{font-size:.7rem;font-weight:450;letter-spacing:.13em}
+.hero h1{font-size:clamp(1.65rem,2.5vw,2.35rem);font-weight:430;line-height:1.18;letter-spacing:-.025em;max-width:860px;margin:0 0 9px}
+.hero .subtitle{font-size:.91rem;font-weight:400;line-height:1.55;margin:0}
+.hero .subtitle strong{font-weight:500;color:inherit}
+.hero .hero-links{margin-top:13px;gap:9px}
+.hero .about-button{font-size:.82rem;font-weight:500;padding:7px 11px}
+.hero .edge-badge{font-size:.74rem;padding:6px 10px}
+.hero .station-identity{margin-top:18px;padding-top:12px;border-top:1px solid var(--border-soft);font-size:.8rem;gap:7px 20px;line-height:1.5}
+.hero .station-identity b{font-weight:450}
+.hero .station-identity strong{font-weight:530}
+.hero .hero-actions{padding-top:2px}
+.hero .theme-toggle,.hero .connection-pill{font-size:.85rem;padding:8px 12px}
+@media(max-width:860px){.hero{grid-template-columns:1fr}.hero .hero-actions{justify-content:flex-start}}
+@media(max-width:560px){.hero h1{font-size:clamp(1.55rem,6vw,1.9rem)}.hero .station-identity{gap:6px 12px}.hero .brand-line{margin-bottom:10px}}
