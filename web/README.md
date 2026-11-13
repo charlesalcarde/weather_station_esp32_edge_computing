@@ -447,7 +447,8 @@ Nenhuma nova migração de banco é necessária nesta etapa.
 
 ### Períodos
 
-O dashboard passa a oferecer 24 h, 7 dias, 30 dias, mês atual e intervalo personalizado.
+O dashboard oferece **60 min**, 24 h, 7 dias, 30 dias, mês atual e intervalo personalizado.
+O recorte de 60 minutos usa a resolução de um minuto já suportada pela API e atualiza automaticamente os gráficos e o resumo a cada 60 segundos enquanto a aba estiver visível. Os demais períodos mantêm o intervalo de atualização de cinco minutos.
 O intervalo personalizado reutiliza o suporte já existente a `inicio` e `fim` em `/api/historico` e `/api/resumo`.
 
 ### Séries e diferenças
