@@ -1,5 +1,12 @@
 # Avaliação experimental da arquitetura Edge → Cloud
 
+## Atualização de estado experimental — novembro de 2026
+
+O relatório [M4 — Resiliência](04-resiliencia.md) já documenta **EXP04c.3c.2 validada funcionalmente em ensaio curto de Wi-Fi OFF, fallback e replay** e **EXP04d validada para recuperação após corte de energia entre gravações**. A meta de **12 horas sem perdas** e a resistência a corte **durante** a gravação **continuam não homologadas**. Assim, as descrições anteriores de EXP04c.3c.2 *ainda em validação* devem ser interpretadas como registro histórico, não como o estado mais recente.
+
+O experimento [M5 — Transformação de dados](05-transformacao-dados.md) é retrospectivo; o laboratório M5 no [dashboard Web](../15-dashboard-web-cloud.md) simula políticas sobre a série bruta do período selecionado. Nenhum desses resultados demonstra redução real de consumo energético do ESP32.
+
+
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 > **Escopo:** metodologia e organização das cinco métricas da Estação Ambiental ESP32. Este documento complementa o [README principal](../../README.md) e não substitui os relatórios individuais.
 
