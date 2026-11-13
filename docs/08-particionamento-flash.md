@@ -1,5 +1,7 @@
 # Particionamento da Memória Flash da Estação Ambiental ESP32
 
+> **Atualização documental (13/11/2026):** O layout documentado corresponde à fase histórica v3.4-RC1; o arquivo de partições versionado está em `firmware/estacao_ambiental/partitions.csv`. Mudanças de partições, OTA ou LittleFS devem ser verificadas contra esse arquivo e contra o firmware efetivamente gravado, antes de qualquer procedimento destrutivo.
+
 Este documento descreve a organização da memória Flash da **Estação
 Ambiental ESP32**, a motivação para adoção de uma tabela de partições
 personalizada, a preservação de OTA, NVS e LittleFS e os cuidados
