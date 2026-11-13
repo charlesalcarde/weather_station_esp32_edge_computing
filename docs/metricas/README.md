@@ -16,6 +16,7 @@ O experimento [M5 — Transformação de dados](05-transformacao-dados.md) é re
 
 ## Índice
 
+- [Atualização de estado experimental — novembro de 2026](#atualização-de-estado-experimental--novembro-de-2026)
 - [1. Introdução](#1-introdução)
 - [2. Pergunta de pesquisa e objetivos](#2-pergunta-de-pesquisa-e-objetivos)
   - [2.1 Objetivo geral](#21-objetivo-geral)
