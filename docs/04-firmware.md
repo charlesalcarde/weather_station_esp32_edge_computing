@@ -28,6 +28,8 @@ Foi inspecionado o pacote `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(
 | TLS | Chamadas a `setInsecure()`; nenhuma chamada a `setCACert()` identificada |
 | Dashboard local | `data/index.html`, `data/style.css`, `data/app.js` e `data/favicon.png` |
 
+**Integridade do artefato:** o SHA-256 do arquivo `.ino` extraído coincide com o registro em `SHA256SUMS.txt`: `9b83bf0dff37fb58d7c58209c735da2bc46ad4375e09e0d073f4cf904bb2c924`. Isso confirma consistência dos bytes do pacote com seu manifesto local, **não** autoria, autenticidade de origem ou execução em hardware.
+
 O agrupamento inicia **desligado** e é habilitado por `EXP04 PACK ON` apenas na inicialização corrente. O README do pacote descreve a implementação como **não compilada nem testada fisicamente no momento de preparação**. A posterior validação funcional de curta duração deve ser consultada em [M4 — Resiliência](metricas/04-resiliencia.md); a meta de 12 horas sem perdas permanece não homologada.
 
 O comando `EXP04 PACK OFF` impede novas gravações agrupadas sem impedir o replay de grupos existentes. A falha de compactação, espaço ou abertura antes da escrita pode acionar fallback individual; se a escrita agrupada for parcial ou ambígua, o fallback é bloqueado para reduzir risco de duplicação. O cursor persistido após HTTP 2xx ainda admite duplicidade em caso de perda de energia no intervalo crítico; é necessária idempotência no backend para garantia de não duplicação.
