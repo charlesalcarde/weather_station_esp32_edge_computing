@@ -289,7 +289,7 @@ A próxima etapa da M3 será comparar alternativas de representação e transmis
 - [Arquitetura da estação](../02-arquitetura.md).
 - [Conectividade](../06-conectividade.md).
 - [Integração Cloud](../07-cloud.md).
-- [Processamento Edge](../11-processamento-edge.md) — conferir nome efetivo no repositório.
+- [Processamento Edge](../09-processamento-edge.md) — conferir nome efetivo no repositório.
 
 ### Fontes técnicas e evidências
 
