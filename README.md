@@ -1,12 +1,12 @@
 # Estação Ambiental ESP32
 
-> **Atualização documental — novembro de 2026:** consulte [Dashboard Web e camada Cloud](docs/15-dashboard-web-cloud.md) para as APIs, parecer com IA e laboratório M5 atualmente versionados; consulte [Diagnóstico operacional](docs/16-diagnostico-operacional.md) para investigação de falhas. O firmware de referência na `main` continua identificado como v3.6.7; experimentos EXP04c/EXP04d não devem ser confundidos com funcionalidades incorporadas a essa versão. As seções históricas abaixo ainda estão em revisão.
+> **Atualização documental — novembro de 2026:** consulte [Dashboard Web e camada Cloud](docs/15-dashboard-web-cloud.md) para as APIs, parecer com IA e laboratório M5 atualmente versionados; consulte [Diagnóstico operacional](docs/16-diagnostico-operacional.md) para investigação de falhas. O firmware de referência na `main` continua identificado como v3.6.7; experimentos EXP04c/EXP04d não devem ser confundidos com funcionalidades incorporadas a essa versão. Algumas seções históricas ainda estão em revisão; o [roadmap consolidado](docs/12-roadmap.md) apresenta o estado por componente.
 
 Estação ambiental experimental baseada em ESP32 desenvolvida como plataforma de estudo, desenvolvimento e experimentação em **Computação de Borda (Edge Computing)**.
 
 O sistema realiza aquisição de dados ambientais, processamento local, análise temporal, classificação das condições ambientais, detecção de eventos, visualização por dashboard Web local, telemetria Cloud, dashboard remoto e atualização de firmware OTA pela rede local e pela Internet.
 
-> **Referência arquitetural:** firmware v3.6.7. **Avaliação experimental:** instrumentações EXP01b–EXP04b.2; os resultados e a configuração de cada ensaio são documentados separadamente em [`docs/metricas/`](docs/metricas/README.md).
+> **Referência arquitetural:** firmware v3.6.7. **Avaliação experimental:** instrumentações EXP01b–EXP04d e estudos EXP05 M5; os resultados e a configuração de cada ensaio são documentados separadamente em [`docs/metricas/`](docs/metricas/README.md).
 
 ---
 
