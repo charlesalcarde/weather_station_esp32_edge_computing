@@ -358,7 +358,7 @@ A etapa posterior EXP04c.3c.1 ampliou a capacidade e demonstrou recuperação ap
 - [Arquitetura da estação](../02-arquitetura.md).
 - [Integração Cloud](../07-cloud.md).
 - [Particionamento Flash, OTA e LittleFS](../08-particionamento-flash.md).
-- [Processamento Edge](../11-processamento-edge.md).
+- [Processamento Edge](../09-processamento-edge.md).
 - [Operação e diagnóstico](../10-operacao.md).
 
 ### Artefatos e evidências experimentais
