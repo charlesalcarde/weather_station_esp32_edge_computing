@@ -22,8 +22,8 @@ const INFO = {
     body: `
       <p>Esta estação é uma plataforma experimental de monitoramento ambiental baseada em <strong>Computação de Borda (Edge Computing)</strong>.</p>
       <p>Os sensores são conectados diretamente a um ESP32. O próprio microcontrolador realiza a aquisição, os cálculos, as médias, a análise de tendência, as conversões, a classificação de estados ambientais e a detecção de eventos.</p>
-      <div class="modal-highlight"><strong>Edge primeiro; Cloud como extensão.</strong><br>A operação ambiental principal não depende de Supabase, Vercel ou Open-Meteo.</div>
-      <p>A camada Cloud acrescenta armazenamento histórico, acesso remoto e análises. A Open-Meteo é utilizada apenas como referência meteorológica externa.</p>
+      <div class="modal-highlight"><strong>Estação independente da nuvem.</strong><br>A aquisição dos sensores, as médias, tendências, conversões, estados ambientais e detecção de eventos são realizados localmente no ESP32. A estação mantém essas funções mesmo sem Internet ou acesso à nuvem.</div>
+      <p>A Internet amplia o sistema com histórico remoto, acesso à distância, análises e referência meteorológica, mas não executa o processamento ambiental principal. A camada Cloud utiliza Supabase e Vercel; a Open-Meteo fornece apenas a referência externa, sem interferir nos cálculos locais.</p>
     `
   },
   "m5-fidelidade": {
@@ -1071,7 +1071,6 @@ function configurarNavegacao() {
   const monitor = $("#area-monitoramento");
   const cloud = $("#area-analises");
   const edge = $("#area-edge");
-  const callout = document.querySelector(".edge-callout");
   const sections = [...document.querySelectorAll("main.container > section.section")];
   const edgeSection = edge.querySelector("section.section");
   const m5 = edge.querySelector(".m5-lab");
@@ -1091,7 +1090,6 @@ function configurarNavegacao() {
   apoio.hidden = true;
   apoio.style.display = "none";
   for (const section of ocultas) apoio.appendChild(section);
-  if (callout) monitor.appendChild(callout);
   if (condicoes) monitor.appendChild(condicoes);
   if (comparacao) monitor.appendChild(comparacao);
   if (condicoes && edgeSection) {
