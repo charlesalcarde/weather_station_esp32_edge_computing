@@ -1,5 +1,7 @@
 # Dashboard Web — Estação Ambiental v3.4
 
+> **Atualização documental — novembro de 2026:** este README contém descrições históricas da camada Web v3.4. A referência consolidada dos recursos atualmente versionados está em [Dashboard Web e camada Cloud](../docs/15-dashboard-web-cloud.md), incluindo `GET /api/m5-serie`, `POST /api/parecer`, horizontes de 60 minutos e laboratório M5. A documentação histórica abaixo permanece para consulta e está em processo de revisão.
+
 Camada Web remota da Estação Ambiental ESP32.
 
 > **Dashboard local = operacional e resiliente.**  
