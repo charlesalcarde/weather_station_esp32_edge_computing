@@ -20,6 +20,7 @@ externos.
 
 ## Índice
 
+- [Atualização arquitetural — novembro de 2026](#atualização-arquitetural--novembro-de-2026)
 -   [1. Objetivo da arquitetura](#1-objetivo-da-arquitetura)
 -   [2. Visão geral](#2-visão-geral)
 -   [3. Princípios arquiteturais](#3-princípios-arquiteturais)
