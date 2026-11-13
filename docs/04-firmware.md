@@ -17,6 +17,7 @@ fluxo de execução do firmware da **Estação Ambiental ESP32**.
 
 ## Índice
 
+- [Estado do firmware versionado — novembro de 2026](#estado-do-firmware-versionado--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. Responsabilidades do firmware](#2-responsabilidades-do-firmware)
 -   [3. Ciclo de execução](#3-ciclo-de-execução)
