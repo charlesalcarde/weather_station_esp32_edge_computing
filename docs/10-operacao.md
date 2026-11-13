@@ -19,6 +19,7 @@ básicos de diagnóstico.
 
 ## Índice
 
+- [Complemento operacional — novembro de 2026](#complemento-operacional--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. Objetivo deste documento](#2-objetivo-deste-documento)
 -   [3. Fluxo operacional](#3-fluxo-operacional)
