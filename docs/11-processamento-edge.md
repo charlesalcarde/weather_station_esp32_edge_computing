@@ -1,5 +1,10 @@
 # Processamento Edge da Estação Ambiental ESP32
 
+## Nota de consolidação — novembro de 2026
+
+**Documento legado com conteúdo substancialmente sobreposto a [09-processamento-edge.md](09-processamento-edge.md).** Para evitar duas referências concorrentes, o arquivo `09-processamento-edge.md` é a referência canônica para novas citações e atualizações. Este arquivo permanece disponível para preservar links existentes e eventuais diferenças editoriais, até que uma revisão de referências permita sua descontinuação segura.
+
+
 Este documento descreve o processamento executado localmente pela
 **Estação Ambiental ESP32**, destacando a transformação de dados brutos
 dos sensores em informação ambiental interpretável antes de qualquer
