@@ -9,6 +9,7 @@ O cabeçalho da seção OTA do `.ino` ainda descreve uma etapa apenas de consult
 
 ## Índice
 
+- [Verificação do código versionado — 13/11/2026](#verificação-do-código-versionado--13112026)
 1. [Objetivo](#1-objetivo)
 2. [Contexto do projeto](#2-contexto-do-projeto)
 3. [Arquitetura de atualização](#3-arquitetura-de-atualização)
