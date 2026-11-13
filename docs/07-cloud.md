@@ -47,12 +47,12 @@ o dashboard remoto.
 -   [19. Política de menor privilégio](#19-política-de-menor-privilégio)
 -   [20. Operação durante
     indisponibilidade](#20-operação-durante-indisponibilidade)
--   [21. Fila resiliente futura](#21-fila-resiliente-futura)
+-   [21. Persistência resiliente — estado experimental](#21-persistência-resiliente--estado-experimental)
 -   [22. Prevenção de duplicidades](#22-prevenção-de-duplicidades)
 -   [23. Histórico de curto e longo
     prazo](#23-histórico-de-curto-e-longo-prazo)
--   [24. Agregação histórica futura](#24-agregação-histórica-futura)
--   [25. Dashboard remoto](#25-dashboard-remoto)
+-   [24. Histórico e agregação na camada Web](#24-histórico-e-agregação-na-camada-web)
+-   [25. Dashboard remoto — implementação versionada](#25-dashboard-remoto--implementação-versionada)
 -   [26. Separação entre backend e
     frontend](#26-separação-entre-backend-e-frontend)
 -   [27. Múltiplas estações](#27-múltiplas-estações)
@@ -672,31 +672,11 @@ Essa separação já constitui uma propriedade importante da arquitetura.
 
 ------------------------------------------------------------------------
 
-## 21. Fila resiliente futura
+## 21. Persistência resiliente — estado experimental
 
-Uma evolução planejada é armazenar temporariamente snapshots que não
-puderam ser enviados.
+A persistência de leituras durante indisponibilidade de rede e seu replay foram implementados e testados em **firmwares experimentais EXP04b/EXP04c/EXP04d**, documentados em [M4 — Resiliência](metricas/04-resiliencia.md). O arquivo de firmware v3.6.7 versionado como referência na `main` não deve ser tratado automaticamente como portador dessas alterações.
 
-Para uma fila com capacidade máxima $Q_{\mathrm{max}}$:
-
-$$
-0\le Q\le Q_{\mathrm{max}}
-$$
-
-Se (A) novos snapshots forem adicionados e (R) forem reenviados com
-sucesso durante determinado intervalo, uma relação simplificada para a
-ocupação é:
-
-$$
-Q_{\mathrm{novo}}=\min(Q_{\max},Q_{\mathrm{anterior}}+A-R)
-$$
-
-respeitando a condição de que a ocupação não pode ser negativa.
-
-Uma implementação deve definir explicitamente o comportamento quando a
-fila atingir sua capacidade máxima.
-
-------------------------------------------------------------------------
+A EXP04c.3c.2 demonstrou recuperação funcional em ensaio curto de desconexão, fallback e replay; a EXP04d demonstrou recuperação após interrupção de energia **entre gravações**. Permanecem não homologadas a meta de 12 horas sem perdas e a interrupção **durante** a gravação. Persistência local, continuidade do processamento Edge e confirmação de entrega ao Supabase são garantias distintas.
 
 ## 22. Prevenção de duplicidades
 
@@ -746,75 +726,17 @@ séries temporais de longo prazo.
 
 ------------------------------------------------------------------------
 
-## 24. Agregação histórica futura
+## 24. Histórico e agregação na camada Web
 
-Para períodos longos, pode ser desnecessário manter todas as
-visualizações na resolução de um minuto.
+O código versionado já contém `GET /api/historico` e `GET /api/resumo`, utilizados pelo dashboard Web para consultas e estatísticas temporais. A escolha de resolução depende do horizonte de consulta; a série bruta paginada para o laboratório M5 utiliza `GET /api/m5-serie`. Não confundir dados agregados para visualização com dados brutos usados na simulação M5.
 
-Uma média horária, por exemplo, pode ser calculada por:
+Detalhes de endpoints, limites de interpretação e análises estão em [Dashboard Web e Cloud](15-dashboard-web-cloud.md).
 
-$$
-\bar{x}_{\mathrm{hora}}=\frac{1}{N}\sum_{i=1}^{N}x_i
-$$
+## 25. Dashboard remoto — implementação versionada
 
-Para dados completos a cada minuto, tipicamente:
+O dashboard remoto não é mais apenas uma proposta futura: o repositório contém frontend em `web/src/` e APIs serverless em `web/api/`, incluindo `/api/agora`, `/api/historico`, `/api/resumo`, `/api/m5-serie` e `/api/parecer`. A interface oferece horizontes de 60 minutos, 24 horas, 7 dias, 30 dias e personalizado, além de análises exploratórias local × referência externa, parecer com IA e laboratório M5.
 
-$$
-N\approx60
-$$
-
-Uma média diária pode utilizar:
-
-$$
-\bar{x}_{\mathrm{dia}}=\frac{1}{N_{\mathrm{dia}}}\sum_{i=1}^{N_{\mathrm{dia}}}x_i
-$$
-
-com:
-
-$$
-N_{\mathrm{dia}}\le1440
-$$
-
-dependendo da disponibilidade das amostras.
-
-Também podem ser calculados mínimo e máximo por período:
-
-$$
-x_{\min}=\min(x_1,\ldots,x_N)
-$$
-
-$$
-x_{\max}=\max(x_1,\ldots,x_N)
-$$
-
-Isso permitirá construir análises sazonais mantendo os dados brutos
-quando necessário.
-
-------------------------------------------------------------------------
-
-## 25. Dashboard remoto
-
-O dashboard remoto será consumidor dos dados Cloud.
-
-Arquitetura prevista:
-
-``` text
-ESP32
-  │
-  ▼
-Supabase
-  │
-  ▼
-API / consultas
-  │
-  ▼
-Dashboard Web remoto
-```
-
-Ele deverá reproduzir os principais indicadores do dashboard local e
-acrescentar recursos históricos.
-
-------------------------------------------------------------------------
+A presença no repositório não confirma qual commit está efetivamente implantado. A rota de parecer possui limitações documentadas de proteção distribuída contra abuso e procedência das evidências. Consultar [Dashboard Web e Cloud](15-dashboard-web-cloud.md).
 
 ## 26. Separação entre backend e frontend
 
