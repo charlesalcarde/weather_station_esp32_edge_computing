@@ -212,7 +212,7 @@ $$
 
 Assim, a estação não transmite apenas dados brutos: ela produz **informação derivada e estados ambientais no próprio Edge**.
 
-Documentação detalhada: [`docs/11-processamento-edge.md`](docs/11-processamento-edge.md).
+Documentação detalhada (referência canônica): [`docs/09-processamento-edge.md`](docs/09-processamento-edge.md).
 
 ---
 
@@ -585,7 +585,7 @@ A documentação técnica detalhada está organizada em `docs/`.
 | [`08-particionamento-flash.md`](docs/08-particionamento-flash.md) | Flash, APP0/APP1, OTA e LittleFS |
 | [`09-processamento-edge.md`](docs/09-processamento-edge.md) | processamento Edge (documento existente) |
 | [`10-operacao.md`](docs/10-operacao.md) | operação e diagnóstico |
-| [`11-processamento-edge.md`](docs/11-processamento-edge.md) | processamento matemático e Edge Computing |
+| [`11-processamento-edge.md`](docs/11-processamento-edge.md) | referência histórica; conteúdo consolidado em [`09-processamento-edge.md`](docs/09-processamento-edge.md) |
 | [`12-roadmap.md`](docs/12-roadmap.md) | evolução planejada |
 | [`13-incidente-supabase-401-jwt.md`](docs/13-incidente-supabase-401-jwt.md) | registro de incidente Supabase |
 | [`14-ota-remota.md`](docs/14-ota-remota.md) | arquitetura, segurança e ciclo de atualização OTA remota |
