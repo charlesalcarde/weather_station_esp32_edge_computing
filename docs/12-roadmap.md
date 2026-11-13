@@ -43,11 +43,14 @@ Um mesmo recurso pode estar versionado, mas não homologado. Experimentos isolad
 
 ## 3. Resultados experimentais
 
+**Artefato adicional inspecionado:** `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(6).zip` (fornecido em 13/11/2026). O arquivo `.ino` declara versão `3.6.7`, mas possui recursos EXP04c.3c.2 que não podem ser atribuídos automaticamente ao arquivo homônimo de versão na `main`. O pacote não foi incorporado ao repositório nesta revisão. A descrição técnica e as ressalvas de proveniência estão em [Firmware](04-firmware.md) e [M4](metricas/04-resiliencia.md).
+
+
 | Experimento | Resultado documentado | Limite |
 | --- | --- | --- |
 | EXP01b / EXP02a / EXP03a | Instrumentação de latência, recursos e comunicação | Resultados dependem das condições dos ensaios |
 | EXP04c.3c.1 | Ensaio prolongado de buffer e replay, com perdas observadas | Não comprova 12 horas sem perdas |
-| EXP04c.3c.2 | Recuperação funcional em ensaio curto de Wi-Fi OFF, fallback e replay | Homologação prolongada pendente |
+| EXP04c.3c.2 | Código do pacote ZIP inspecionado estaticamente; relatório M4 registra validação funcional posterior em ensaio curto de Wi-Fi OFF, fallback e replay | O README original do ZIP declara que o pacote não havia sido compilado nem testado fisicamente quando preparado; homologação prolongada pendente |
 | EXP04d | Recuperação após corte de energia **entre** gravações | Corte **durante** gravação não homologado |
 | EXP05 M5-A/B/C | Simulação retrospectiva de políticas de retenção | Não mede redução real de energia, bytes transmitidos ou requisições do ESP32 |
 
