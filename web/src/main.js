@@ -1097,7 +1097,7 @@ function configurarNavegacao() {
   if (condicoes && edgeSection) {
     const estados = edgeSection.querySelector("#edge-evidencias");
     const fonte = edgeSection.querySelector("#edge-fonte");
-    const explicacoes = [...edgeSection.querySelectorAll("details.edge-metodo")];
+    const explicacoes = [...edgeSection.querySelectorAll(":scope > details.edge-metodo")];
     const cards = condicoes.querySelector("#cards-agora");
     const meta = condicoes.querySelector(".current-meta");
     if (cards && estados) cards.after(estados);
