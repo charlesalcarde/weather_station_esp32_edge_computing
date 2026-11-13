@@ -1025,7 +1025,18 @@ function iniciarAtualizacaoAutomatica() {
     if (segundosParaAtualizar <= 0) { segundosParaAtualizar = INTERVALO_AGORA_S; atualizarAgoraAutomaticamente(); }
     else atualizarContador();
   }, 1000);
-  setInterval(() => { if (!document.hidden) atualizarHistoricoAutomaticamente(); }, INTERVALO_HISTORICO_MS);
+  // O recorte de 60 minutos acompanha a cadência de aquisição da estação.
+  // Os demais períodos preservam a atualização de histórico a cada 5 minutos.
+  setInterval(() => {
+    if (!document.hidden && filtroAtual.tipo === "periodo" && filtroAtual.valor === "60min") {
+      atualizarHistoricoAutomaticamente();
+    }
+  }, 60 * 1000);
+  setInterval(() => {
+    if (!document.hidden && !(filtroAtual.tipo === "periodo" && filtroAtual.valor === "60min")) {
+      atualizarHistoricoAutomaticamente();
+    }
+  }, INTERVALO_HISTORICO_MS);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) { segundosParaAtualizar = INTERVALO_AGORA_S; atualizarAgoraAutomaticamente(); atualizarHistoricoAutomaticamente(); }
   });
