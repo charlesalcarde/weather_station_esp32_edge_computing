@@ -85,7 +85,7 @@ Consultar os relatórios [M4](metricas/04-resiliencia.md) e [M5](metricas/05-tra
 - [ ] Comparar políticas M5 sob os mesmos dados, métricas e restrições de reconstrução.
 - [ ] Medir em firmware real volume transmitido, quantidade de requisições e consumo energético antes de alegar economia.
 - [ ] Investigar TinyML somente após estabelecer orçamento de Flash, heap, RAM e latência.
-- [ ] Avaliar implantação multies­tação e campanhas em ambientes urbanos, laboratórios, escolas ou museus.
+- [ ] Avaliar implantação multiestação e campanhas em ambientes urbanos, laboratórios, escolas ou museus.
 
 ## 6. Critérios para conclusão
 
