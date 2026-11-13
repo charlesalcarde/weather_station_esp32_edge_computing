@@ -22,9 +22,22 @@ const INFO = {
     body: `
       <p>Esta estação é uma plataforma experimental de monitoramento ambiental baseada em <strong>Computação de Borda (Edge Computing)</strong>.</p>
       <p>Os sensores são conectados diretamente a um ESP32. O próprio microcontrolador realiza a aquisição, os cálculos, as médias, a análise de tendência, as conversões, a classificação de estados ambientais e a detecção de eventos.</p>
-      <div class="modal-highlight"><strong>Edge primeiro; Cloud como extensão.</strong><br>A operação ambiental principal não depende de Supabase, Vercel ou Open-Meteo.</div>
-      <p>A camada Cloud acrescenta armazenamento histórico, acesso remoto e análises. A Open-Meteo é utilizada apenas como referência meteorológica externa.</p>
+      <div class="modal-highlight"><strong>Estação independente da nuvem.</strong><br>A aquisição dos sensores, as médias, tendências, conversões, estados ambientais e detecção de eventos são realizados localmente no ESP32. A estação mantém essas funções mesmo sem Internet ou acesso à nuvem.</div>
+      <p>A Internet amplia o sistema com histórico remoto, acesso à distância, análises e referência meteorológica, mas não executa o processamento ambiental principal. A camada Cloud utiliza Supabase e Vercel; a Open-Meteo fornece apenas a referência externa, sem interferir nos cálculos locais.</p>
     `
+  },
+  "m5-fidelidade": {
+    eyebrow: "Laboratório M5 • metodologia",
+    title: "Como interpretar a comparação de fidelidade",
+    body: `<p>As duas políticas são simuladas sobre a mesma série bruta de leituras válidas. <strong>Periódica</strong> seleciona leituras pelo intervalo configurado; <strong>Híbrida</strong> também seleciona quando a variação de temperatura, umidade ou pressão atinge o respectivo limiar.</p>
+      <p><strong>Pontos selecionados:</strong> quantidade de leituras mantidas pela política (Nₛ).</p>
+      <p><strong>Redução (%):</strong> 100 × (1 − Nₛ / N), em que N é o total de leituras brutas elegíveis.</p>
+      <p>Para cada variável e leitura válida, o valor reconstruído é o último valor selecionado e disponível daquela variável. O erro absoluto é |xᵢ − x̂ᵢ|.</p>
+      <p><strong>MAE:</strong> (Σ |xᵢ − x̂ᵢ|) / n, média dos erros absolutos; menor é melhor.</p>
+      <p><strong>RMSE:</strong> √[Σ (xᵢ − x̂ᵢ)² / n], raiz da média dos erros quadráticos; penaliza mais erros grandes.</p>
+      <p><strong>Erro máximo:</strong> max |xᵢ − x̂ᵢ|, maior desvio observado.</p>
+      <p><strong>Extremos preservados:</strong> número de segmentos em que o mínimo e o máximo da série original também aparecem entre as leituras selecionadas; cada resultado é apresentado como segmentos preservados / segmentos avaliados.</p>
+      <p>As medidas de temperatura e pressão são expressas em °C e hPa; diferenças de umidade são expressas em pontos percentuais (p.p.). Esses indicadores medem fidelidade retrospectiva, não economia real de energia, tráfego de rede ou preservação de eventos.</p>`
   },
   "edge-computing": {
     eyebrow: "Arquitetura",
@@ -297,16 +310,12 @@ function renderEdge(d) {
     ["Estado da pressão", d.estado_pressao, "Classificação transmitida", contextualizarPressao()],
     ["Instabilidade", d.instabilidade, "Indicador transmitido", "Pontuação combina tendência barométrica, desvios de temperatura DHT11 e umidade. Sem todas as médias e contadores internos, a pontuação não é reconstruída."],
     ["Anomalia", d.anomalia, "Indicador transmitido", "Pode considerar saltos, divergência entre sensores e desvios das médias de 15 minutos. O disparador específico não está disponível nesta telemetria."],
-    ["Número de alertas", d.numero_alertas, "Contagem transmitida"],
-    ["Tendência da pressão", d.tendencia_pressao_hora == null ? null : fmtNumero(d.tendencia_pressao_hora, 2) + " hPa/h", "Derivado no Edge"],
-    ["Temperatura", d.temperatura == null ? null : fmtNumero(d.temperatura) + " °C", "Medição local (BMP180)"],
-    ["Umidade", d.umidade == null ? null : fmtNumero(d.umidade, 0) + " %", "Medição local"],
-    ["RSSI", d.rssi == null ? null : fmtNumero(d.rssi, 0) + " dBm", "Telemetria de conectividade"]
+    ["Número de alertas", d.numero_alertas, "Contagem transmitida"]
   ];
   painel.replaceChildren();
   for (const [nome,valor,origem,contexto] of campos) {
     const item = document.createElement("div");
-    item.className = "edge-indicador";
+    item.className = "edge-indicador calculated";
     const cabecalho = document.createElement("div");
     cabecalho.className = "edge-indicador-cabecalho";
     const titulo = document.createElement("span");
@@ -683,7 +692,7 @@ function renderM5(h) {
   const limiares={temperatura:Number($("#m5-dt").value),umidade:Number($("#m5-du").value),pressao_mar:Number($("#m5-dp").value)};
   const campos=["temperatura","umidade","pressao_mar"];
   saida.replaceChildren(); tabela.replaceChildren();
-  if (![resolucao,intervalo,...Object.values(limiares)].every(Number.isFinite) || resolucao<=0 || intervalo<1 || intervalo>10080 || Object.values(limiares).some(v=>v<=0)) {
+  if (![resolucao,intervalo,...Object.values(limiares)].every(Number.isFinite) || resolucao<=0 || intervalo<15 || intervalo>10080 || Object.values(limiares).some(v=>v<=0)) {
     estado.textContent="Informe parâmetros válidos e positivos."; if(charts["m5-chart"]){charts["m5-chart"].destroy();delete charts["m5-chart"];} return;
   }
   const validos=(Array.isArray(h.dados)?h.dados:[]).map(p=>({...p,tempo:Date.parse(p.timestamp)}))
@@ -749,10 +758,36 @@ function renderM5(h) {
     resumo.push(["Erro máximo "+nomes[c],a.n?f(a.max,3):"—",b.n?f(b.max,3):"—"]);
     resumo.push(["Extremos preservados "+nomes[c],ea.min+"/"+ea.segmentos+" mín.; "+ea.max+"/"+ea.segmentos+" máx.",eb.min+"/"+eb.segmentos+" mín.; "+eb.max+"/"+eb.segmentos+" máx."]);
   }
-  for(const [nome,pv,hv] of resumo){
-    const tr=document.createElement("tr");
-    for(const v of [nome,pv,hv]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
-    tabela.appendChild(tr);
+  const grupos=[
+    ["Seleção e redução",resumo.slice(0,2)],
+    ["Temperatura",resumo.slice(2,6)],
+    ["Umidade",resumo.slice(6,10)],
+    ["Pressão",resumo.slice(10,14)]
+  ];
+  for(const [titulo,medidas] of grupos){
+    const detalhes=document.createElement("details");
+    detalhes.className="edge-metodo m5-fidelidade-grupo";
+    const summary=document.createElement("summary");
+    summary.textContent=titulo;
+    detalhes.appendChild(summary);
+    const wrap=document.createElement("div");
+    wrap.className="m5-table-wrap";
+    const table=document.createElement("table");
+    table.className="m5-table";
+    const thead=document.createElement("thead");
+    const header=document.createElement("tr");
+    for(const tituloColuna of ["Métrica","Periódica","Híbrida"]){
+      const th=document.createElement("th");th.textContent=tituloColuna;header.appendChild(th);
+    }
+    thead.appendChild(header);
+    const tbody=document.createElement("tbody");
+    for(const [nome,pv,hv] of medidas){
+      const tr=document.createElement("tr");
+      for(const v of [nome,pv,hv]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      tbody.appendChild(tr);
+    }
+    table.append(thead,tbody);wrap.appendChild(table);detalhes.appendChild(wrap);
+    tabela.appendChild(detalhes);
   }
   for(const [nome,valor] of [["Pontos elegíveis",String(total)],["Periódica",String(per.retidos.size)+" pontos"],["Híbrida",String(hib.retidos.size)+" pontos"],["Redução híbrida",f(100*(1-hib.retidos.size/total),1)+"%"]]){
     const card=document.createElement("article");card.className="edge-indicador";
@@ -1036,7 +1071,6 @@ function configurarNavegacao() {
   const monitor = $("#area-monitoramento");
   const cloud = $("#area-analises");
   const edge = $("#area-edge");
-  const callout = document.querySelector(".edge-callout");
   const sections = [...document.querySelectorAll("main.container > section.section")];
   const edgeSection = edge.querySelector("section.section");
   const m5 = edge.querySelector(".m5-lab");
@@ -1056,10 +1090,24 @@ function configurarNavegacao() {
   apoio.hidden = true;
   apoio.style.display = "none";
   for (const section of ocultas) apoio.appendChild(section);
-  if (callout) monitor.appendChild(callout);
   if (condicoes) monitor.appendChild(condicoes);
   if (comparacao) monitor.appendChild(comparacao);
-  if (edgeSection) monitor.appendChild(edgeSection);
+  if (condicoes && edgeSection) {
+    const estados = edgeSection.querySelector("#edge-evidencias");
+    const fonte = edgeSection.querySelector("#edge-fonte");
+    const explicacoes = [...edgeSection.querySelectorAll(":scope > details.edge-metodo")];
+    const cards = condicoes.querySelector("#cards-agora");
+    const meta = condicoes.querySelector(".current-meta");
+    if (cards && estados) {
+      const subtitulo=document.createElement("h3");
+      subtitulo.className="edge-estados-titulo";
+      subtitulo.textContent="Estados e alertas calculados no Edge";
+      cards.after(subtitulo,estados);
+    }
+    if (meta && fonte) meta.after(fonte);
+    for (const detalhes of explicacoes) condicoes.appendChild(detalhes);
+    edgeSection.remove();
+  }
   if (historico) cloud.appendChild(historico);
   if (delta) cloud.appendChild(delta);
   if (parecer) cloud.appendChild(parecer);
