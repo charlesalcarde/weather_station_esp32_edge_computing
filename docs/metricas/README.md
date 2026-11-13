@@ -22,7 +22,7 @@ O experimento [M5 — Transformação de dados](05-transformacao-dados.md) é re
   - [2.1 Objetivo geral](#21-objetivo-geral)
   - [2.2 Objetivos específicos](#22-objetivos-específicos)
 - [3. Arquitetura sob avaliação](#3-arquitetura-sob-avaliação)
-- [4. Metodologia experimental](#4-metodologia-experimental)
+- [4. Metodologia geral](#4-metodologia-geral)
   - [4.1 Unidade experimental](#41-unidade-experimental)
   - [4.2 Periodicidade e janelas](#42-periodicidade-e-janelas)
   - [4.3 Instrumentação](#43-instrumentação)
