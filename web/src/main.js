@@ -1100,7 +1100,12 @@ function configurarNavegacao() {
     const explicacoes = [...edgeSection.querySelectorAll(":scope > details.edge-metodo")];
     const cards = condicoes.querySelector("#cards-agora");
     const meta = condicoes.querySelector(".current-meta");
-    if (cards && estados) cards.after(estados);
+    if (cards && estados) {
+      const subtitulo=document.createElement("h3");
+      subtitulo.className="edge-estados-titulo";
+      subtitulo.textContent="Estados e alertas calculados no Edge";
+      cards.after(subtitulo,estados);
+    }
     if (meta && fonte) meta.after(fonte);
     for (const detalhes of explicacoes) condicoes.appendChild(detalhes);
     edgeSection.remove();
