@@ -456,7 +456,7 @@ A conclusão científica é de **potencial de redução de comunicação com fid
 - [Firmware](../04-firmware.md).
 - [Dashboard local](../05-dashboard-local.md).
 - [Integração Cloud](../07-cloud.md).
-- [Processamento Edge](../11-processamento-edge.md).
+- [Processamento Edge](../09-processamento-edge.md).
 - [Particionamento da Flash](../08-particionamento-flash.md).
 
 **Fontes primárias:** firmware auditado `EstacaoAmbiental_Etapa2_Integracao(1).ino`; tabela histórica `public.leituras` (recorte definido na seção 3); resultados SQL das etapas EXP05 executadas. Não foram atribuídas referências bibliográficas externas não verificadas.
