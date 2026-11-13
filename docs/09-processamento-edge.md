@@ -1,5 +1,10 @@
 # Processamento Edge da Estação Ambiental ESP32
 
+## Estado e documentação relacionada — novembro de 2026
+
+Este é o **documento canônico** para o processamento Edge. A implementação de referência no repositório é o firmware v3.6.7; os estudos EXP04c/EXP04d e a transformação M5 pertencem aos relatórios experimentais e não devem ser confundidos com funcionalidades homologadas nesse firmware. Consultar [Métricas](metricas/README.md) e [Arquitetura](02-arquitetura.md).
+
+
 Este documento descreve o processamento executado localmente pela
 **Estação Ambiental ESP32**, destacando a transformação de dados brutos
 dos sensores em informação ambiental interpretável antes de qualquer
