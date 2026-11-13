@@ -1,5 +1,12 @@
 # Cloud e Telemetria da Estação Ambiental ESP32
 
+## Estado da camada Cloud — novembro de 2026
+
+O dashboard remoto **já está implementado** em `web/` e disponibiliza no código as rotas `/api/agora`, `/api/historico`, `/api/resumo`, `/api/m5-serie` e `/api/parecer`. A descrição de *dashboard futuro* e de *agregação histórica futura* nas seções históricas abaixo deve ser lida no contexto original da v3.4-RC1. A referência atual está em [Dashboard Web e Cloud](15-dashboard-web-cloud.md).
+
+A **fila resiliente com compactação e replay** foi avaliada em firmware experimental EXP04c/EXP04d, conforme [M4](metricas/04-resiliencia.md). Não presumir sua presença no firmware v3.6.7 versionado na `main`. Os dados locais, a referência Open-Meteo e as campanhas de medição devem manter identificação independente.
+
+
 Este documento descreve a camada Cloud da **Estação Ambiental ESP32**,
 incluindo Supabase, PostgreSQL, API REST, estrutura da telemetria,
 timestamps, segurança, Row Level Security (RLS), eventos e evolução para
