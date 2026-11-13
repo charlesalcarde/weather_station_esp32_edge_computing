@@ -400,3 +400,28 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .m5-fidelidade{margin:16px 0 20px}
 .m5-fidelidade .m5-table-wrap{margin-bottom:0}
 .dashboard-area[hidden],#analises-internas[hidden]{display:none!important}
+
+/* UX: cabeçalho editorial leve e estados Edge na mesma seção de medições. */
+.hero{gap:28px;margin-bottom:20px}
+.hero h1{font-size:clamp(1.9rem,3.7vw,2.85rem);font-weight:540;letter-spacing:-.035em;line-height:1.12;max-width:740px}
+.hero .kicker{font-weight:500;letter-spacing:.12em}
+.hero .subtitle{font-size:.97rem;line-height:1.6}
+.hero .subtitle strong{font-weight:550}
+.hero .station-identity{margin-top:20px;gap:8px 16px}
+.hero .station-identity strong{font-weight:550}
+.hero .edge-badge{font-weight:450}
+.dashboard-nav{margin-top:14px}
+.dashboard-tab{font-weight:560}
+.section h2{font-weight:580;letter-spacing:-.018em}
+.edge-estados-titulo{margin:24px 0 4px;font-size:1rem;font-weight:580;letter-spacing:-.01em}
+.edge-evidencias{margin-top:12px}
+.edge-indicador.calculated{border-top:3px solid var(--calculated)}
+.edge-indicador strong{font-weight:620}
+.m5-fidelidade{margin:20px 0}
+.m5-fidelidade-heading{display:flex;align-items:center;gap:10px}
+.m5-fidelidade-heading h4{margin:0;font-size:1rem;font-weight:580}
+.m5-fidelidade-grupos{display:grid;gap:10px;margin-top:14px}
+.m5-fidelidade-grupo{margin-top:0}
+.m5-fidelidade-grupo summary{font-weight:560}
+.m5-fidelidade-grupo .m5-table-wrap{margin-bottom:0}
+@media(max-width:560px){.hero h1{font-size:clamp(1.8rem,7vw,2.4rem)}}
