@@ -19,6 +19,7 @@ o dashboard remoto.
 
 ## Índice
 
+- [Estado da camada Cloud — novembro de 2026](#estado-da-camada-cloud--novembro-de-2026)
 -   [1. Visão geral](#1-visão-geral)
 -   [2. Papel da Cloud](#2-papel-da-cloud)
 -   [3. Arquitetura Edge--Cloud](#3-arquitetura-edgecloud)
