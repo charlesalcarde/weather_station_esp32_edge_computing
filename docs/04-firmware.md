@@ -14,6 +14,26 @@ fluxo de execução do firmware da **Estação Ambiental ESP32**.
 
 ------------------------------------------------------------------------
 
+### Pacote experimental EXP04c.3c.2 recebido em 13/11/2026
+
+Foi inspecionado o pacote `EXP04c3c2_Correcao_Cadencia_Fallback_Pacote_Completo(6).zip`, com o arquivo `EstacaoAmbiental_Etapa2_Integracao.ino`. Ele declara `FIRMWARE_VERSION "3.6.7"`, mas **essa string de versão não identifica, por si só, o mesmo conjunto de funcionalidades do firmware v3.6.7 publicado na `main`**.
+
+| Item | Evidência no código do pacote |
+| --- | --- |
+| Métricas | Registro da rota HTTP `/api/metricas` |
+| Janela de armazenamento em OFF | `EXP04C3_INTERVALO_OFF_MS = 180000UL` |
+| Replay | `EXP04_REPLAY_INTERVALO_MS = 10000UL` |
+| Agrupamento | Registros `.grp`, CRC32, cursores alternados e fallback individual |
+| OTA remota | `INTERVALO_OTA_REMOTA = 21600000UL` (6 horas) |
+| TLS | Chamadas a `setInsecure()`; nenhuma chamada a `setCACert()` identificada |
+| Dashboard local | `data/index.html`, `data/style.css`, `data/app.js` e `data/favicon.png` |
+
+O agrupamento inicia **desligado** e é habilitado por `EXP04 PACK ON` apenas na inicialização corrente. O README do pacote descreve a implementação como **não compilada nem testada fisicamente no momento de preparação**. A posterior validação funcional de curta duração deve ser consultada em [M4 — Resiliência](metricas/04-resiliencia.md); a meta de 12 horas sem perdas permanece não homologada.
+
+O comando `EXP04 PACK OFF` impede novas gravações agrupadas sem impedir o replay de grupos existentes. A falha de compactação, espaço ou abertura antes da escrita pode acionar fallback individual; se a escrita agrupada for parcial ou ambígua, o fallback é bloqueado para reduzir risco de duplicação. O cursor persistido após HTTP 2xx ainda admite duplicidade em caso de perda de energia no intervalo crítico; é necessária idempotência no backend para garantia de não duplicação.
+
+**Escopo da inspeção:** leitura estática do ZIP. Não houve compilação, upload, teste elétrico ou alteração do firmware.
+
 ## Índice
 
 - [Estado do firmware versionado — novembro de 2026](#estado-do-firmware-versionado--novembro-de-2026)
