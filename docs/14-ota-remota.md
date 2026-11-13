@@ -1,5 +1,12 @@
 # OTA Remota — Estação Ambiental ESP32
 
+## Verificação do código versionado — 13/11/2026
+
+O arquivo `EstacaoAmbiental_v3_6_7_OTA_HTTPS_TARGET.ino` declara `FIRMWARE_VERSION "3.6.7"`, consulta o manifesto remoto `releases/version.json` e define `INTERVALO_OTA_REMOTA = 21600000UL` (**6 horas**) e `ATRASO_PRIMEIRA_OTA_REMOTA = 15000UL` (**15 segundos**). Portanto, a meta de verificação a cada **5 minutos**, mencionada no roadmap, **não corresponde à constante presente nesse arquivo**.
+
+O cabeçalho da seção OTA do `.ino` ainda descreve uma etapa apenas de consulta, mas o histórico de versões no próprio arquivo e este documento registram uma OTA HTTPS com instalação validada. Para estabelecer o comportamento real, consultar a implementação executável e os testes; comentários históricos não são suficientes. A implementação menciona uso de `setInsecure()` em sua etapa inicial; não declarar autenticação TLS por certificado como homologada sem inspeção e teste específicos. Downgrade, rollback automático e OTA do LittleFS continuam sujeitos à comprovação separada.
+
+
 ## Índice
 
 1. [Objetivo](#1-objetivo)
