@@ -597,7 +597,7 @@ A avaliação quantitativa da arquitetura **Edge → Cloud** está organizada em
 
 **Documento de entrada:** [`docs/metricas/README.md`](docs/metricas/README.md).
 
-| Métrica | Objeto de avaliação | Documento previsto |
+| Métrica | Objeto de avaliação | Relatório disponível |
 |---|---|---|
 | **M1 — Latência** | aquisição, processamento local e operação HTTPS; distinção entre latência de comunicação e ponta a ponta | [`01-latencia.md`](docs/metricas/01-latencia.md) |
 | **M2 — Recursos computacionais** | tempo de CPU por rotina, Flash, RAM/heap e viabilidade no ESP32 | [`02-recursos-computacionais.md`](docs/metricas/02-recursos-computacionais.md) |
