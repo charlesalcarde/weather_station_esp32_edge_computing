@@ -10,7 +10,7 @@ O experimento [M5 — Transformação de dados](05-transformacao-dados.md) é re
 **Projeto:** Estação Ambiental Inteligente com ESP32  
 > **Escopo:** metodologia e organização das cinco métricas da Estação Ambiental ESP32. Este documento complementa o [README principal](../../README.md) e não substitui os relatórios individuais.
 
-> **Estado:** documentação experimental em evolução; meta experimental de 12 horas definida; EXP04c.3c.1 auditada e EXP04c.3c.2 em validação. A homologação permanece pendente.
+> **Estado em novembro de 2026:** M1–M3 têm caracterizações iniciais; EXP04c.3c.1 foi auditada, EXP04c.3c.2 foi validada funcionalmente em ensaio curto e EXP04d foi validada para corte de energia entre gravações. A meta de 12 horas sem perdas e o corte durante escrita permanecem não homologados. M5 é avaliação retrospectiva concluída, sem transmissão seletiva implementada.
 
 ---
 
