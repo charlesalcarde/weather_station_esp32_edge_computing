@@ -10,8 +10,7 @@ Para diagnóstico de boot, LED e conectividade, consultar [Diagnóstico operacio
 Este documento descreve a organização lógica, as responsabilidades e o
 fluxo de execução do firmware da **Estação Ambiental ESP32**.
 
-> Documento referente à arquitetura de firmware consolidada na fase
-> **v3.4-RC1** do projeto.
+> A descrição detalhada de fluxos e rotinas abaixo foi originalmente elaborada na fase **v3.4-RC1**. Para versão de referência e diferenças verificadas, consultar a seção de atualização acima e o [README do firmware](../firmware/estacao_ambiental/README-firmware.md).
 
 ------------------------------------------------------------------------
 
