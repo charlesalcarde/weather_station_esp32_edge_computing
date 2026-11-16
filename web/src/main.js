@@ -340,10 +340,72 @@ function renderEdge(d) {
   }
 }
 
+
+// Referência meteorológica atual: somente a última telemetria /api/agora.
+// Nunca usa as médias históricas nem altera o horizonte selecionado.
+function renderReferenciaExternaAtual(d) {
+  const alvo = $("#referencia-externa-atual");
+  if (!alvo) return;
+  const ex = d.externo;
+  const tem = v => typeof v === "number" && Number.isFinite(v);
+  const n = (v, unidade="", casas=1) => tem(v) ? fmtNumero(v,casas)+(unidade ? " "+unidade : "") : "—";
+  const texto = v => String(v ?? "—").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const data = v => {
+    if (!v) return null;
+    const t = new Date(v);
+    return Number.isFinite(t.getTime()) ? t : null;
+  };
+  if (!ex) {
+    alvo.innerHTML = '<p class="section-note">Referência externa indisponível na última telemetria. Os sensores locais continuam independentes da Open-Meteo.</p>';
+    return;
+  }
+  const wmo = Number(ex.weather_code);
+  const descricao = {
+    0:"Céu limpo",1:"Predominantemente limpo",2:"Parcialmente nublado",3:"Nublado",
+    45:"Nevoeiro",48:"Nevoeiro com geada",51:"Garoa fraca",53:"Garoa",55:"Garoa intensa",
+    56:"Garoa congelante fraca",57:"Garoa congelante intensa",61:"Chuva fraca",63:"Chuva",65:"Chuva forte",
+    66:"Chuva congelante fraca",67:"Chuva congelante forte",71:"Neve fraca",73:"Neve",75:"Neve forte",
+    77:"Grãos de neve",80:"Pancadas fracas",81:"Pancadas de chuva",82:"Pancadas fortes",
+    85:"Pancadas de neve",86:"Pancadas fortes de neve",95:"Tempestade",96:"Tempestade com granizo",99:"Tempestade com granizo forte"
+  };
+  const simbolo = [95,96,99].includes(wmo) ? "⛈️" : [61,63,65,80,81,82].includes(wmo) ? "🌧️" :
+    [51,53,55,56,57,66,67].includes(wmo) ? "🌦️" : [71,73,75,77,85,86].includes(wmo) ? "🌨️" :
+    [45,48].includes(wmo) ? "🌫️" : wmo===0 ? (ex.is_day===0?"🌙":"☀️") : "☁️";
+  // Campo TIME WITHOUT TIME ZONE: somente hora, sem data inferida.
+  const horarioExterno = typeof ex.atualizado === "string" &&
+    /^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?$/.test(ex.atualizado)
+      ? ex.atualizado.slice(0, 8) : null;
+  const ultima = data(d.ultima_leitura);
+  const status = horarioExterno ? "Horário externo informado" : "Horário externo não informado";
+  const linhas = [
+    ["Temperatura",d.temperatura,ex.temperatura,"°C",1],
+    ["Umidade",d.umidade,ex.umidade,"%",0],
+    ["Pressão ao nível do mar",d.pressao_mar,ex.pressao_mar,"hPa",1],
+    ["Ponto de orvalho",d.ponto_orvalho,ex.ponto_orvalho,"°C",1]
+  ];
+  const comparacao = linhas.map(([nome,local,externo,unidade,casas]) => {
+    const dif = tem(local)&&tem(externo) ? local-externo : null;
+    const delta = dif===null ? "—" : (dif>0?"+":"")+n(dif,unidade==="%"?"pp":unidade,casas);
+    return '<tr><th scope="row">'+nome+'</th><td>'+n(local,unidade,casas)+'</td><td>'+n(externo,unidade,casas)+'</td><td>'+delta+'</td></tr>';
+  }).join("");
+  const grupos = [
+    ["Condições atuais",[["🌡️","Temperatura",n(ex.temperatura,"°C")],["🌡️","Sensação térmica",n(ex.sensacao,"°C")],["💧","Umidade",n(ex.umidade,"%",0)],["💦","Ponto de orvalho",n(ex.ponto_orvalho,"°C")]]],
+    ["Pressão / atmosfera",[["🌡️","Nível do mar",n(ex.pressao_mar,"hPa")],["🌡️","Superfície",n(ex.pressao_superficie,"hPa")],["☁️","Nuvens",n(ex.nuvens,"%",0)],["👁️","Visibilidade",n(ex.visibilidade,"km")]]],
+    ["Vento / sol",[["💨","Velocidade",n(ex.vento,"km/h")],["🧭","Direção",(ex.direcao_cardeal ? texto(ex.direcao_cardeal)+" " : "")+(tem(ex.direcao_vento)?"("+n(ex.direcao_vento,"°",0)+")":"—")],["🌬️","Rajadas",n(ex.rajada,"km/h")],["☀️","Índice UV",n(ex.uv)]]],
+    ["Precipitação",[["🌧️","Precipitação",n(ex.precipitacao,"mm")],["🌧️","Chuva",n(ex.chuva,"mm")],["☔","Probabilidade",n(ex.prob_chuva,"%",0)]]]
+  ];
+  alvo.innerHTML =
+    '<div class="meteo-atual-top"><div class="meteo-condicao"><span class="meteo-icone" aria-hidden="true">'+simbolo+'</span><div><small>'+texto(ex.local || "Referência configurada")+'</small><strong>'+texto(descricao[wmo] || "Condição externa")+'</strong><span>'+texto(status)+'</span></div></div></div>'+
+    '<div class="meteo-grade">'+grupos.map(([titulo,itens])=>'<article class="meteo-grupo"><h3>'+titulo+'</h3>'+itens.map(([icone,k,v])=>'<div><span class="meteo-medida-nome"><span class="meteo-medida-icone" aria-hidden="true">'+icone+'</span>'+k+'</span><strong>'+v+'</strong></div>').join("")+'</article>').join("")+'</div>'+
+    '<div class="meteo-comparacao"><h3>Local × referência externa</h3><div class="meteo-tabela-scroll"><table><thead><tr><th>Grandeza</th><th>Local</th><th>Externo</th><th>Diferença</th></tr></thead><tbody>'+comparacao+'</tbody></table></div></div>'+
+    '<div class="meteo-rodape"><span>📍 '+texto(ex.local || "Localização não informada")+'</span><span>▲ Elevação: '+n(d.altitude,"m")+'</span><span>Externo: '+(horarioExterno || "—")+'</span><span>Última leitura: '+(ultima?fmtDataHora(ultima):"—")+'</span><span>Fonte: Open-Meteo (via ESP32)</span></div>';
+}
+
 function renderAgora(d) {
   setConexao(d.status);
   renderEdge(d);
   renderIdentidade(d);
+  renderReferenciaExternaAtual(d);
   const itens = [
     ["Status", (d.status || "—").toUpperCase()],
     ["Temperatura", `${fmtNumero(d.temperatura)} °C`],
@@ -1107,6 +1169,15 @@ function configurarNavegacao() {
     if (meta && fonte) meta.after(fonte);
     for (const detalhes of explicacoes) condicoes.appendChild(detalhes);
     edgeSection.remove();
+  }
+  // Médias por horizonte ficam na Cloud; a referência instantânea permanece na Edge.
+  const historicoComparacao = comparacao?.querySelector('#cards-comparacao');
+  if (historicoComparacao) {
+    const historicoBox = document.createElement('section');
+    historicoBox.className = 'section';
+    historicoBox.innerHTML = '<p class="eyebrow">Análise histórica</p><h2>Estação × Open-Meteo — médias do período</h2><p class="section-note">Comparação estatística vinculada ao horizonte selecionado.</p>';
+    historicoBox.appendChild(historicoComparacao);
+    cloud.appendChild(historicoBox);
   }
   if (historico) cloud.appendChild(historico);
   if (delta) cloud.appendChild(delta);

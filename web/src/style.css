@@ -445,3 +445,32 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .hero .theme-toggle,.hero .connection-pill{font-size:.85rem;padding:8px 12px}
 @media(max-width:860px){.hero{grid-template-columns:1fr}.hero .hero-actions{justify-content:flex-start}}
 @media(max-width:560px){.hero h1{font-size:clamp(1.55rem,6vw,1.9rem)}.hero .station-identity{gap:6px 12px}.hero .brand-line{margin-bottom:10px}}
+
+/* Referência externa instantânea, separada da análise histórica Cloud. */
+.meteo-atual{margin-top:18px}
+.meteo-atual-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.meteo-condicao{display:flex;gap:15px;align-items:center}
+.meteo-icone{font-size:2.7rem;line-height:1}
+.meteo-condicao div{display:flex;flex-direction:column;gap:4px}
+.meteo-condicao small{font-size:.8rem;color:var(--muted)}
+.meteo-condicao strong{font-size:1.25rem}
+.meteo-condicao span:not(.meteo-icone){font-size:.78rem;color:var(--muted)}
+.meteo-grade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.meteo-grupo{border:1px solid var(--border);border-radius:12px;padding:15px;min-width:0;background:var(--surface-soft)}
+.meteo-grupo h3{font-size:.73rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 12px}
+.meteo-grupo>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:8px 0;font-size:.82rem}
+.meteo-grupo>div span{color:var(--muted)}
+.meteo-grupo>div strong{font-weight:600;text-align:right}
+.meteo-comparacao{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+.meteo-comparacao h3{font-size:.9rem;margin:0 0 10px}
+.meteo-tabela-scroll{overflow-x:auto}
+.meteo-comparacao table{width:100%;border-collapse:collapse;font-size:.84rem}
+.meteo-comparacao th,.meteo-comparacao td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.meteo-comparacao th{font-weight:500;color:var(--muted)}
+.meteo-rodape{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:.75rem}
+@media(max-width:1000px){.meteo-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.meteo-grade{grid-template-columns:1fr}.meteo-comparacao th,.meteo-comparacao td{padding:8px 6px}}
+
+/* Ícones discretos nas linhas da referência externa, como no dashboard local. */
+.meteo-medida-nome{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.meteo-medida-icone{display:inline-block;flex:0 0 1.15em;width:1.15em;text-align:center;font-size:.88em;line-height:1;opacity:.9}

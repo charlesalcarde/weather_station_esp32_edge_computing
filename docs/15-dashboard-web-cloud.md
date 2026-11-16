@@ -50,6 +50,14 @@ A interface versionada contempla horizonte de **60 minutos**, **24 horas**, **7 
 
 A comparação local × referência externa é **exploratória**. Correlação, defasagem e atenuação devem ser interpretadas com cautela diante de lacunas, agregação, sazonalidade, ventilação e características do ambiente de instalação. Associação estatística não estabelece causalidade.
 
+### Referência meteorológica atual na Operação Edge (16/11/2026)
+
+A Operação Edge passa a apresentar o painel completo de referência meteorológica externa, seguindo o dashboard local: condição do tempo, temperatura, sensação térmica, umidade, ponto de orvalho, pressões, nuvens, visibilidade, velocidade/direção/rajadas do vento, UV, precipitação, chuva e probabilidade de chuva. A comparação instantânea local × externa inclui temperatura, umidade (diferença em pontos percentuais), pressão ao nível do mar e ponto de orvalho.
+
+Os valores vêm **exclusivamente do último registro de telemetria** fornecido por `/api/agora` (campos `externo`); a interface não consulta a Open-Meteo diretamente e não requer mudança no firmware. O painel não depende do horizonte histórico selecionado. Exibe a data da referência externa e da última leitura; se os dados estiverem ausentes, indica indisponibilidade em vez de fabricar números. Os cartões de médias por período foram deslocados para a Operação Cloud.
+
+**Validação pendente:** confirmar o build Vite e a renderização na implantação Vercel antes de considerar a alteração publicada em produção.
+
 ## 5. Parecer ambiental com IA
 
 A rota `web/api/parecer.js` recebe evidências no esquema `parecer-evidencias-v2`, valida estrutura e tamanho do pacote e consulta o serviço Gemini no servidor. O modelo padrão no código inspecionado é `gemini-2.5-flash`, configurável por `GEMINI_MODEL`. A resposta utiliza o esquema `parecer-ambiental-v1`.
