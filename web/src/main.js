@@ -390,14 +390,14 @@ function renderReferenciaExternaAtual(d) {
     return '<tr><th scope="row">'+nome+'</th><td>'+n(local,unidade,casas)+'</td><td>'+n(externo,unidade,casas)+'</td><td>'+delta+'</td></tr>';
   }).join("");
   const grupos = [
-    ["Condições atuais",[["Temperatura",n(ex.temperatura,"°C")],["Sensação térmica",n(ex.sensacao,"°C")],["Umidade",n(ex.umidade,"%",0)],["Ponto de orvalho",n(ex.ponto_orvalho,"°C")]]],
-    ["Pressão / atmosfera",[["Nível do mar",n(ex.pressao_mar,"hPa")],["Superfície",n(ex.pressao_superficie,"hPa")],["Nuvens",n(ex.nuvens,"%",0)],["Visibilidade",n(ex.visibilidade,"km")]]],
-    ["Vento / sol",[["Velocidade",n(ex.vento,"km/h")],["Direção",(ex.direcao_cardeal ? texto(ex.direcao_cardeal)+" " : "")+(tem(ex.direcao_vento)?"("+n(ex.direcao_vento,"°",0)+")":"—")],["Rajadas",n(ex.rajada,"km/h")],["Índice UV",n(ex.uv)]]],
-    ["Precipitação",[["Precipitação",n(ex.precipitacao,"mm")],["Chuva",n(ex.chuva,"mm")],["Probabilidade",n(ex.prob_chuva,"%",0)]]]
+    ["Condições atuais",[["🌡️","Temperatura",n(ex.temperatura,"°C")],["🌡️","Sensação térmica",n(ex.sensacao,"°C")],["💧","Umidade",n(ex.umidade,"%",0)],["💦","Ponto de orvalho",n(ex.ponto_orvalho,"°C")]]],
+    ["Pressão / atmosfera",[["🌡️","Nível do mar",n(ex.pressao_mar,"hPa")],["🌡️","Superfície",n(ex.pressao_superficie,"hPa")],["☁️","Nuvens",n(ex.nuvens,"%",0)],["👁️","Visibilidade",n(ex.visibilidade,"km")]]],
+    ["Vento / sol",[["💨","Velocidade",n(ex.vento,"km/h")],["🧭","Direção",(ex.direcao_cardeal ? texto(ex.direcao_cardeal)+" " : "")+(tem(ex.direcao_vento)?"("+n(ex.direcao_vento,"°",0)+")":"—")],["🌬️","Rajadas",n(ex.rajada,"km/h")],["☀️","Índice UV",n(ex.uv)]]],
+    ["Precipitação",[["🌧️","Precipitação",n(ex.precipitacao,"mm")],["🌧️","Chuva",n(ex.chuva,"mm")],["☔","Probabilidade",n(ex.prob_chuva,"%",0)]]]
   ];
   alvo.innerHTML =
     '<div class="meteo-atual-top"><div class="meteo-condicao"><span class="meteo-icone" aria-hidden="true">'+simbolo+'</span><div><small>'+texto(ex.local || "Referência configurada")+'</small><strong>'+texto(descricao[wmo] || "Condição externa")+'</strong><span>'+texto(status)+'</span></div></div></div>'+
-    '<div class="meteo-grade">'+grupos.map(([titulo,itens])=>'<article class="meteo-grupo"><h3>'+titulo+'</h3>'+itens.map(([k,v])=>'<div><span>'+k+'</span><strong>'+v+'</strong></div>').join("")+'</article>').join("")+'</div>'+
+    '<div class="meteo-grade">'+grupos.map(([titulo,itens])=>'<article class="meteo-grupo"><h3>'+titulo+'</h3>'+itens.map(([icone,k,v])=>'<div><span class="meteo-medida-nome"><span class="meteo-medida-icone" aria-hidden="true">'+icone+'</span>'+k+'</span><strong>'+v+'</strong></div>').join("")+'</article>').join("")+'</div>'+
     '<div class="meteo-comparacao"><h3>Local × referência externa</h3><div class="meteo-tabela-scroll"><table><thead><tr><th>Grandeza</th><th>Local</th><th>Externo</th><th>Diferença</th></tr></thead><tbody>'+comparacao+'</tbody></table></div></div>'+
     '<div class="meteo-rodape"><span>📍 '+texto(ex.local || "Localização não informada")+'</span><span>▲ Elevação: '+n(d.altitude,"m")+'</span><span>Externo: '+(atualizacao?fmtDataHora(atualizacao):"—")+'</span><span>Última leitura: '+(ultima?fmtDataHora(ultima):"—")+'</span><span>Fonte: Open-Meteo (via ESP32)</span></div>';
 }
