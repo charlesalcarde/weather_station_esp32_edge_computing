@@ -371,13 +371,12 @@ function renderReferenciaExternaAtual(d) {
   const simbolo = [95,96,99].includes(wmo) ? "⛈️" : [61,63,65,80,81,82].includes(wmo) ? "🌧️" :
     [51,53,55,56,57,66,67].includes(wmo) ? "🌦️" : [71,73,75,77,85,86].includes(wmo) ? "🌨️" :
     [45,48].includes(wmo) ? "🌫️" : wmo===0 ? (ex.is_day===0?"🌙":"☀️") : "☁️";
-  const atualizacao = data(ex.atualizado);
+  // Campo TIME WITHOUT TIME ZONE: somente hora, sem data inferida.
+  const horarioExterno = typeof ex.atualizado === "string" &&
+    /^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?$/.test(ex.atualizado)
+      ? ex.atualizado.slice(0, 8) : null;
   const ultima = data(d.ultima_leitura);
-  // Se a fonte não informar data parseável, não afirmar que está atualizada.
-  const idadeMin = atualizacao ? (Date.now()-atualizacao.getTime())/60000 : null;
-  const status = idadeMin === null ? "Horário externo não informado" :
-    idadeMin < -5 ? "Horário externo inconsistente" :
-    idadeMin > 180 ? "Referência externa desatualizada" : "Referência externa recebida";
+  const status = horarioExterno ? "Horário externo informado" : "Horário externo não informado";
   const linhas = [
     ["Temperatura",d.temperatura,ex.temperatura,"°C",1],
     ["Umidade",d.umidade,ex.umidade,"%",0],
@@ -399,7 +398,7 @@ function renderReferenciaExternaAtual(d) {
     '<div class="meteo-atual-top"><div class="meteo-condicao"><span class="meteo-icone" aria-hidden="true">'+simbolo+'</span><div><small>'+texto(ex.local || "Referência configurada")+'</small><strong>'+texto(descricao[wmo] || "Condição externa")+'</strong><span>'+texto(status)+'</span></div></div></div>'+
     '<div class="meteo-grade">'+grupos.map(([titulo,itens])=>'<article class="meteo-grupo"><h3>'+titulo+'</h3>'+itens.map(([icone,k,v])=>'<div><span class="meteo-medida-nome"><span class="meteo-medida-icone" aria-hidden="true">'+icone+'</span>'+k+'</span><strong>'+v+'</strong></div>').join("")+'</article>').join("")+'</div>'+
     '<div class="meteo-comparacao"><h3>Local × referência externa</h3><div class="meteo-tabela-scroll"><table><thead><tr><th>Grandeza</th><th>Local</th><th>Externo</th><th>Diferença</th></tr></thead><tbody>'+comparacao+'</tbody></table></div></div>'+
-    '<div class="meteo-rodape"><span>📍 '+texto(ex.local || "Localização não informada")+'</span><span>▲ Elevação: '+n(d.altitude,"m")+'</span><span>Externo: '+(atualizacao?fmtDataHora(atualizacao):"—")+'</span><span>Última leitura: '+(ultima?fmtDataHora(ultima):"—")+'</span><span>Fonte: Open-Meteo (via ESP32)</span></div>';
+    '<div class="meteo-rodape"><span>📍 '+texto(ex.local || "Localização não informada")+'</span><span>▲ Elevação: '+n(d.altitude,"m")+'</span><span>Externo: '+(horarioExterno || "—")+'</span><span>Última leitura: '+(ultima?fmtDataHora(ultima):"—")+'</span><span>Fonte: Open-Meteo (via ESP32)</span></div>';
 }
 
 function renderAgora(d) {
