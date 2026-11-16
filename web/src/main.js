@@ -373,7 +373,7 @@ function renderReferenciaExternaAtual(d) {
     [45,48].includes(wmo) ? "🌫️" : wmo===0 ? (ex.is_day===0?"🌙":"☀️") : "☁️";
   // Campo TIME WITHOUT TIME ZONE: somente hora, sem data inferida.
   const horarioExterno = typeof ex.atualizado === "string" &&
-    /^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?$/.test(ex.atualizado)
+    /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?$/.test(ex.atualizado)
       ? ex.atualizado.slice(0, 8) : null;
   const ultima = data(d.ultima_leitura);
   const status = horarioExterno ? "Horário externo informado" : "Horário externo não informado";
