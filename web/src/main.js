@@ -814,17 +814,16 @@ function renderM5(h) {
   ];
   const nomes={temperatura:"Temperatura (°C)",umidade:"Umidade (p.p.)",pressao_mar:"Pressão (hPa)"};
   for(const c of campos){
-    const a=per.erros[c],b=hib.erros[c],ea=per.extremos[c],eb=hib.extremos[c];
+    const a=per.erros[c],b=hib.erros[c];
     resumo.push(["MAE "+nomes[c],a.n?f(a.soma/a.n,3):"—",b.n?f(b.soma/b.n,3):"—"]);
     resumo.push(["RMSE "+nomes[c],a.n?f(Math.sqrt(a.quadrados/a.n),3):"—",b.n?f(Math.sqrt(b.quadrados/b.n),3):"—"]);
     resumo.push(["Erro máximo "+nomes[c],a.n?f(a.max,3):"—",b.n?f(b.max,3):"—"]);
-    resumo.push(["Extremos preservados "+nomes[c],ea.min+"/"+ea.segmentos+" mín.; "+ea.max+"/"+ea.segmentos+" máx.",eb.min+"/"+eb.segmentos+" mín.; "+eb.max+"/"+eb.segmentos+" máx."]);
   }
   const grupos=[
     ["Seleção e redução",resumo.slice(0,2)],
-    ["Temperatura",resumo.slice(2,6)],
-    ["Umidade",resumo.slice(6,10)],
-    ["Pressão",resumo.slice(10,14)]
+    ["Temperatura",resumo.slice(2,5)],
+    ["Umidade",resumo.slice(5,8)],
+    ["Pressão",resumo.slice(8,11)]
   ];
   for(const [titulo,medidas] of grupos){
     const detalhes=document.createElement("details");
