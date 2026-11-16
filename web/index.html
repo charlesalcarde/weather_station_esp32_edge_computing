@@ -168,10 +168,10 @@
           <div>
             <p class="eyebrow">Referência externa</p>
             <div class="title-with-info">
-              <h2>Estação × Open-Meteo</h2>
+              <h2>Referência Meteorológica Externa</h2>
               <button class="info-icon info-action" type="button" data-info="open-meteo" aria-label="O que é Open-Meteo">i</button>
             </div>
-            <p class="section-note">A estação mede o seu ambiente local. A Open-Meteo fornece uma referência meteorológica externa para a localização configurada. <span id="comparacao-periodo-info">Comparação estatística: 24 h.</span></p>
+            <p class="section-note">Últimas condições externas transmitidas pela estação e comparação com a leitura local mais recente. Não depende do período histórico selecionado.</p>
           </div>
           <div class="source-comparison" aria-label="Fontes comparadas">
             <div class="source-card source-local">
@@ -184,6 +184,9 @@
             <span class="versus" aria-hidden="true">×</span>
             <div class="source-card source-external"><span>Externo</span><strong>Open-Meteo</strong></div>
           </div>
+        </div>
+        <div id="referencia-externa-atual" class="meteo-atual" aria-live="polite">
+          <p class="section-note">Aguardando a última referência externa transmitida pela estação.</p>
         </div>
         <div id="cards-comparacao" class="comparison-grid"></div>
       </section>
