@@ -470,3 +470,7 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 .meteo-rodape{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:.75rem}
 @media(max-width:1000px){.meteo-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.meteo-grade{grid-template-columns:1fr}.meteo-comparacao th,.meteo-comparacao td{padding:8px 6px}}
+
+/* Ícones discretos nas linhas da referência externa, como no dashboard local. */
+.meteo-medida-nome{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.meteo-medida-icone{display:inline-block;flex:0 0 1.15em;width:1.15em;text-align:center;font-size:.88em;line-height:1;opacity:.9}
