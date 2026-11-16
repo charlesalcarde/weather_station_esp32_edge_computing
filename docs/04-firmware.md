@@ -1,5 +1,8 @@
 # Firmware da Estação Ambiental ESP32
 
+> **Homologação funcional v3.6.9 (16/11/2026):** o sketch validado na placa é `EstacaoAmbiental_v3_6_9_HOMOLOGACAO_CORRECAO_HORARIOS.ino`. A inicialização SNTP não bloqueia o Edge; horários de extremos desconhecidos são serializados como `null` tanto no POST quanto no replay. Foram observados HTTP 201, 21 recuperações, fila zerada e 9/9 novos envios bem-sucedidos. Ver [relatório de homologação](17-homologacao-firmware-v3.6.9.md). O arquivo ainda versionado na `main` permanece como referência histórica até a publicação do sketch testado.
+
+
 ## Estado do firmware versionado — novembro de 2026
 
 O arquivo de referência presente em `main` é `firmware/estacao_ambiental/EstacaoAmbiental_v3_6_7_OTA_HTTPS_TARGET.ino` (`FIRMWARE_VERSION` = `3.6.7`). Este documento mantém o detalhamento histórico da arquitetura v3.4-RC1; não deve ser interpretado como inventário completo das funções atuais. O firmware versionado inclui mecanismos de OTA local e remota, enquanto a implementação de persistência/compactação das EXP04c/EXP04d é descrita separadamente como experimental em [M4](metricas/04-resiliencia.md).
