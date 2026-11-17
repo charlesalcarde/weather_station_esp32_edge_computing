@@ -303,6 +303,26 @@ function tomEstadoEdge(nome, valor) {
   return "neutral";
 }
 
+// Reconstituição descritiva dos cinco gatilhos documentados no firmware v3.6.7.
+// Não é uma nova classificação: a contagem oficial continua sendo a transmitida.
+function descreverAlertasEdge(d) {
+  const normalizar = valor => String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  const encontrados = [];
+  if (normalizar(d.estado_umidade) === "AR MUITO SECO") encontrados.push("Umidade muito baixa");
+  if (normalizar(d.estado_umidade) === "UMIDADE MUITO ALTA") encontrados.push("Umidade muito elevada");
+  if (normalizar(d.estado_pressao) === "EM QUEDA") encontrados.push("Pressão atmosférica em queda");
+  if (normalizar(d.instabilidade) === "ELEVADA") encontrados.push("Possível aumento de instabilidade");
+  if (normalizar(d.anomalia) === "DETECTADA") encontrados.push("Comportamento anômalo detectado");
+  const numero = d.numero_alertas == null ? null : Number(d.numero_alertas);
+  const valido = numero !== null && Number.isInteger(numero) && numero >= 0;
+  const introducao = "O ESP32 recalcula o número de alertas em cada avaliação ambiental. Não é uma contagem acumulada de ocorrências ou de alertas ao longo do dia.";
+  if (!valido) return introducao + " A contagem transmitida não está disponível.";
+  if (numero === 0 && encontrados.length === 0) return introducao + " Na última telemetria, nenhuma das cinco condições de alerta estava presente.";
+  const descricao = encontrados.length ? " Condições identificadas nos estados transmitidos: " + encontrados.join("; ") + "." : " Não foi possível identificar a condição a partir dos estados disponíveis.";
+  const ressalva = encontrados.length !== numero ? " Atenção: a quantidade de condições identificadas (" + encontrados.length + ") difere do contador transmitido (" + numero + "). O contador do ESP32 é a referência." : "";
+  return introducao + " Contagem transmitida: " + numero + "." + descricao + ressalva + " As descrições são inferidas dos estados da mesma telemetria, pois as mensagens individuais do firmware ainda não são disponibilizadas pela API Cloud.";
+}
+
 function renderEdge(d) {
   const fonte = $("#edge-fonte");
   const painel = $("#edge-evidencias");
@@ -333,7 +353,7 @@ function renderEdge(d) {
     ["Estado da pressão", d.estado_pressao, "Classificação transmitida", contextualizarPressao()],
     ["Instabilidade", d.instabilidade, "Indicador transmitido", "Pontuação combina tendência barométrica, desvios de temperatura DHT11 e umidade. Sem todas as médias e contadores internos, a pontuação não é reconstruída."],
     ["Anomalia", d.anomalia, "Indicador transmitido", "Pode considerar saltos, divergência entre sensores e desvios das médias de 15 minutos. O disparador específico não está disponível nesta telemetria."],
-    ["Número de alertas", d.numero_alertas, "Contagem transmitida"]
+    ["Número de alertas", d.numero_alertas, "Condições na última avaliação", descreverAlertasEdge(d)]
   ];
   painel.replaceChildren();
   for (const [nome,valor,origem,contexto] of campos) {
