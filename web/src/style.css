@@ -474,3 +474,20 @@ button:hover { background:var(--button-hover); } button:disabled { cursor:wait; 
 /* Ícones discretos nas linhas da referência externa, como no dashboard local. */
 .meteo-medida-nome{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .meteo-medida-icone{display:inline-block;flex:0 0 1.15em;width:1.15em;text-align:center;font-size:.88em;line-height:1;opacity:.9}
+
+/* Estados Edge: a borda lilás indica origem; a faixa interna comunica a classificação. */
+.edge-estado-card .edge-estado-valor{
+  display:block;width:100%;padding:6px 9px;border-radius:6px;
+  line-height:1.35;overflow-wrap:anywhere;
+  background:var(--edge-state-bg,transparent);color:var(--edge-state-fg,var(--text));
+  border-inline-start:3px solid var(--edge-state-fg,transparent);
+}
+.edge-estado-ok{--edge-state-fg:#147d59;--edge-state-bg:rgba(29,166,112,.10)}
+.edge-estado-info{--edge-state-fg:#246fa5;--edge-state-bg:rgba(58,151,213,.10)}
+.edge-estado-warning{--edge-state-fg:#946000;--edge-state-bg:rgba(224,164,40,.12)}
+.edge-estado-danger{--edge-state-fg:#b13e45;--edge-state-bg:rgba(216,74,84,.12)}
+.edge-estado-neutral{--edge-state-fg:var(--text);--edge-state-bg:var(--surface-soft)}
+:root[data-theme="dark"] .edge-estado-ok{--edge-state-fg:#55d6a0;--edge-state-bg:rgba(47,173,119,.13)}
+:root[data-theme="dark"] .edge-estado-info{--edge-state-fg:#91c9f2;--edge-state-bg:rgba(70,151,207,.14)}
+:root[data-theme="dark"] .edge-estado-warning{--edge-state-fg:#f2c66c;--edge-state-bg:rgba(217,156,31,.15)}
+:root[data-theme="dark"] .edge-estado-danger{--edge-state-fg:#ff9196;--edge-state-bg:rgba(215,65,82,.16)}

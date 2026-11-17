@@ -280,6 +280,29 @@ function renderIdentidade(d) {
   $("#station-altitude").textContent = d.altitude == null ? "—" : `${fmtNumero(d.altitude, 0)} m`;
 }
 
+// Destaque exclusivamente visual: usa classificações já transmitidas pelo ESP32.
+// Valores desconhecidos ficam neutros; nenhuma regra ambiental é recalculada.
+function tomEstadoEdge(nome, valor) {
+  if (valor == null || String(valor).trim() === "") return "neutral";
+  const v = String(valor).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  if (nome === "Número de alertas") {
+    const n = Number(valor);
+    return Number.isFinite(n) && n === 0 ? "ok" : Number.isFinite(n) && n > 0 ? "warning" : "neutral";
+  }
+  const regras = {
+    "Estado geral": {ok:["ESTAVEL","NORMAL"],warning:["ATENCAO"],danger:["ALERTA","CRITICO"]},
+    "Estado da umidade": {ok:["FAIXA MODERADA","MODERADA"],warning:["SECO","ELEVADA"],danger:["MUITO SECO","MUITO ALTA"]},
+    "Estado de conforto": {ok:["CONFORTAVEL"],info:["ACEITAVEL"],warning:["FRIO","QUENTE","FORA DA FAIXA IDEAL"]},
+    "Estado da pressão": {ok:["ESTAVEL"],info:["SUBINDO","EM ALTA"],warning:["EM QUEDA","CAINDO"]},
+    "Instabilidade": {ok:["BAIXA"],warning:["MODERADA"],danger:["ELEVADA","ALTA"]},
+    "Anomalia": {ok:["NENHUMA"],warning:["ATENCAO"],danger:["DETECTADA","PRESENTE","SIM","ANOMALIA"]}
+  };
+  const mapa = regras[nome];
+  if (!mapa) return "neutral";
+  for (const [tom, estados] of Object.entries(mapa)) if (estados.includes(v)) return tom;
+  return "neutral";
+}
+
 function renderEdge(d) {
   const fonte = $("#edge-fonte");
   const painel = $("#edge-evidencias");
@@ -315,7 +338,7 @@ function renderEdge(d) {
   painel.replaceChildren();
   for (const [nome,valor,origem,contexto] of campos) {
     const item = document.createElement("div");
-    item.className = "edge-indicador calculated";
+    item.className = "edge-indicador calculated edge-estado-card";
     const cabecalho = document.createElement("div");
     cabecalho.className = "edge-indicador-cabecalho";
     const titulo = document.createElement("span");
@@ -333,6 +356,7 @@ function renderEdge(d) {
     }
     const valorEl = document.createElement("strong");
     valorEl.textContent = valor == null || valor === "" ? "Não informado" : String(valor);
+    valorEl.className = "edge-estado-valor edge-estado-" + tomEstadoEdge(nome, valor);
     const descricao = document.createElement("small");
     descricao.textContent = origem;
     item.append(cabecalho, valorEl, descricao);
