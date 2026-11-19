@@ -1,5 +1,8 @@
 # Operação da Estação Ambiental ESP32
 
+> **Atualização operacional v3.6.9 (16/11/2026):** após a correção temporal, mensagens `[369][TEMPO] ... enviado NULL` indicam que o horário de um extremo ainda é desconhecido; não significam necessariamente falha NTP. O replay foi confirmado com HTTP 201, 21 registros recuperados e zero pendências; o Vercel voltou a indicar online. Para critérios e limitações, ver [homologação v3.6.9](17-homologacao-firmware-v3.6.9.md). Não executar limpeza automática do LittleFS.
+
+
 ## Complemento operacional — novembro de 2026
 
 Este manual preserva procedimentos da fase v3.4-RC1. Para a investigação atual de falhas de alimentação, boot, heartbeat, Wi-Fi, LittleFS e Supabase, utilizar também [Diagnóstico operacional](16-diagnostico-operacional.md), que registra o incidente ainda não resolvido de 13/11/2026.
